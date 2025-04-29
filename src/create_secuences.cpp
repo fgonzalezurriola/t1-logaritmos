@@ -31,8 +31,8 @@ void write_vector_to_file(const string &filename, const vector<int64_t> vec);
 /** create_and_write_M
  * @brief Calls the random_vector_int64() and write_vector_to_file() functions
  * @param n: Number of int64_t to populate
- * @returns Vector created
- * @note static keyword makes that the seed and the distribution are calculated just the first time
+ * @returns void
+ * @note the for ends after m_mult*BLOCKS_PER_M loops
  */
 void create_and_write_M(int64_t m_mult) {
     for (int j = 0; j < NUMBER_OF_SECUENCES; j++) {
@@ -47,7 +47,7 @@ void create_and_write_M(int64_t m_mult) {
     }
 }
 
-/**
+/** random_vector_int64
  * @brief Create a vector of size n with random int64_t values
  * @details using numeric_limits of int64_t to avoid writing the values of -2^63 and 2^63-1
  * @param n: Number of int64_t to populate
@@ -70,7 +70,7 @@ vector<int64_t> random_vector_int64(int64_t n) {
  * @details If the file it's already created it continues writing at EndOfFIle
  * @param filename file to write/overwrite
  * @return Void
- * @warning If the files doesn't exists, the program exits
+ * @warning If the files doesn't exists, the program exits with error
  */
 void write_vector_to_file(const string &filename, const vector<int64_t> vec) {
     // If the file it's already created ios::app interface continues writing at EoF
@@ -98,9 +98,10 @@ int main(int argc, char *argv[]) {
         cerr << "Missing input" << endl;
         exit(EXIT_FAILURE);
     }
-    // Recordar que argv[0] es el nombre del programa
+    // TODO: add exception if the stoi doesn't returns an interger
+    // Recordar que argv[0] es el nombre del programa, argv[1] es el valor dado
+    // En el makefile, en la regla run se usa ./create_secuences 4, este 4 se le pasa a la siguiente
+    // función
     int64_t mult = stoi(argv[1]);
     create_and_write_M(mult);
-    // placeholder, borrar
-    // for (int64_t mult : {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60}) {
 }
