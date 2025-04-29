@@ -1,0 +1,4 @@
+#ifndef CALCULATE_ARITY_H
+#define CALCULATE_ARITY_H
+
+#endif
