@@ -1,0 +1,4 @@
+#ifndef EXTERNAL_QUICKSORT_H
+#define EXTERNAL_QUICKSORT_H
+
+#endif
