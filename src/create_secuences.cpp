@@ -92,9 +92,15 @@ void write_vector_to_file(const string &filename, const vector<int64_t> vec) {
 // ? Peor caso, hacer la lógica en el makefile, limpiar archivos parece engorroso en cpp
 
 // ? entregarle un parámetro al main y listo
-int main() {
-    // for (int64_t mult : {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60}) {
-    for (int64_t mult : {4}) {
-        create_and_write_M(mult);
+
+int main(int argc, char *argv[]) {
+    if (!argc) {
+        cerr << "Missing input" << endl;
+        exit(EXIT_FAILURE);
     }
+    // Recordar que argv[0] es el nombre del programa
+    int64_t mult = stoi(argv[1]);
+    create_and_write_M(mult);
+    // placeholder, borrar
+    // for (int64_t mult : {4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60}) {
 }

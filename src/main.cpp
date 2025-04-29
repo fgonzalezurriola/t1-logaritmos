@@ -1,4 +1,4 @@
-#include "calculate_a.h"
+#include "calculate_arity.h"
 #include "create_secuences.h"
 #include "external_mergesort.h"
 #include "external_quicksort.h"

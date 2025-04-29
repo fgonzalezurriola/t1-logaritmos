@@ -4,6 +4,24 @@
 
 C++
 
+Para ejecutar el código usar
+
+```sh
+# Preparar los directorios para los archivos binarios
+make prepare
+```
+
+```sh
+# Compilar el código cpp
+make build
+```
+
+```sh
+# El código se ejecutará segun lo escrito en make run
+# (ejecutará create_secuences pasandole un M=4, creando las 5 secuencias en dist/m_4)
+make run
+```
+
 ## Requisitos
 
 ### Para Windows
@@ -77,7 +95,7 @@ Y para correr el código usar
 ### Docker
 
 Para simplificar, docker levanta en una especie de "Maquina virtual" (contenedor) con lo mínimo para correr programas.
-En las instrucciones se pide crear un contenedor con 500Mb de ram, puede
+En las instrucciones se pide crear un contenedor con 500MB de ram.
 
 [Instrucciones](https://hub.docker.com/r/pabloskewes/cc4102-cpp-env)
 
