@@ -27,6 +27,11 @@ void quickSort(int A[], int p, int r) {
     quickSort(A, q + 1, r);
   }
 }
+
+void quicksort_N_ario(int N[], int puntero, int arity){
+  for (int i = 0; i < len(N); i += )
+}
+
 int main() {
   int a[] = {2, 6, 5, 1, 3, 4};
   int n = sizeof(a) / sizeof(a[0]);
