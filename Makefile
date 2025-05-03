@@ -1,11 +1,19 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
-TARGET = create_secuences
 
 # Construye carpetas y ejecuta el código compilado en bin/
+# run:
+# 	make prepare
+# 	./bin/create_secuences 4
+
+# Correr todo el programa
 run:
 	make prepare
-	./bin/$(TARGET) 4
+	./bin/programa
+
+test:
+	make prepare
+	./bin/calculate_arity
 
 read:
 	./bin/read
@@ -18,9 +26,9 @@ prepare:
 
 # Compilar el código c++
 build:
-	$(CXX) $(CXXFLAGS) utils/read.cpp -o bin/read 
-	$(CXX) $(CXXFLAGS) src/create_secuences.cpp -o bin/$(TARGET)
-
+	$(CXX) $(CXXFLAGS) -Iinclude src/main.cpp src/create_secuences.cpp -o bin/programa
+	$(CXX) $(CXXFLAGS) -Iinclude utils/read.cpp -o bin/read
+	
 # Eliminar todos los archivos de bin/ y dist/
 clean:
 	rm -rf bin/*

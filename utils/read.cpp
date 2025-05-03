@@ -15,19 +15,19 @@ void read_n_lines(const string &filename, int n) {
         exit(EXIT_FAILURE);
     }
     vector<int64_t> vector;
-
     for (int i = 0; i < n; i++) {
         unsigned long position = i * sizeof(int64_t);
         in.seekg(position, ios::beg);
         int64_t y;
         in.read(reinterpret_cast<char *>(&y), sizeof(y));
-        cout << "Número " << i << " : " << y << endl;
+        cout << "Número " << i + 1 << " : " << y << endl;
     }
     return;
 }
 
 int main() {
-    string filename = "dist/m_4/secuence_1.bin";
-    int n = 100;
+    string filename = "dist/m_60/secuence_1.bin";
+    int n = 520;
     read_n_lines(filename, n);
+    return 0;
 }
