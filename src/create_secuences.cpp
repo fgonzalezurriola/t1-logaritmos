@@ -86,43 +86,40 @@ void write_vector_to_file(const string &filename, int64_t block_index, const vec
     if (!out) {
         cerr << "Error writing file " << filename << endl;
     }
+    out.close();
     return;
 }
 
-// TODO: todo
+// // TODO: todo
 
-// Devuelve un vector con los 512 enteros leídos, de momento si no tiene 512 enteros retorna error
-vector<int64_t> read_block(const string &filename, int64_t block_index) {
-    vector<int64_t> buffer(INTS_PER_BLOCK);
-    ifstream in(filename, ios::binary);
-    if (!in) {
-        cerr << "Error opening file " << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-    in.seekg(block_index * BLOCK_SIZE);
-    in.read(reinterpret_cast<char *>(buffer.data()), BLOCK_SIZE);
-    if (in.gcount() != BLOCK_SIZE) {
-        cerr << "Error: block smaller than block_size" << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-    return buffer;
-}
+// // Devuelve un vector con los 512 enteros leídos, de momento si no tiene 512 enteros retorna
+// error vector<int64_t> read_block(const string &filename, int64_t block_index) {
+//     vector<int64_t> buffer(INTS_PER_BLOCK);
+//     ifstream in(filename, ios::binary);
+//     if (!in) {
+//         cerr << "Error opening file " << filename << endl;
+//         exit(EXIT_FAILURE);
+//     }
+//     in.seekg(block_index * BLOCK_SIZE);
+//     in.read(reinterpret_cast<char *>(buffer.data()), BLOCK_SIZE);
+//     return buffer;
+// }
 
-void write_block(const string &filename, int64_t block_index, const vector<int64_t> &buffer) {
-    fstream out(filename, ios::in | ios::out | ios::binary);
-    if (!out) {
-        cerr << "Error opening file " << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-    streampos file_offset = block_index * sizeof(block_index);
-    out.seekp(block_index * BLOCK_SIZE);
-    out.write(reinterpret_cast<const char *>(buffer.data()), BLOCK_SIZE);
-    if (!out) {
-        cerr << "Error writing to block in file " << filename << endl;
-    }
-    return;
-}
+// void write_block(const string &filename, int64_t block_index, const vector<int64_t> &buffer) {
+//     fstream out(filename, ios::in | ios::out | ios::binary);
+//     if (!out) {
+//         cerr << "Error opening file " << filename << endl;
+//         exit(EXIT_FAILURE);
+//     }
+//     streampos file_offset = block_index * sizeof(block_index);
+//     out.seekp(block_index * BLOCK_SIZE);
+//     out.write(reinterpret_cast<const char *>(buffer.data()), BLOCK_SIZE);
+//     if (!out) {
+//         cerr << "Error writing to block in file " << filename << endl;
+//     }
+//     return;
+// }
 
-void sort_in_memory(vector<int64_t> &data) {
-    sort(data.begin(), data.end());
-}
+// void sort_in_memory(vector<int64_t> &data) {
+//     sort(data.begin(), data.end());
+// }

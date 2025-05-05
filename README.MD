@@ -4,7 +4,11 @@
 
 C++
 
-Para ejecutar el código usar
+Para ejecutar el código usar en la raiz del proyecto
+
+```docker
+docker run --rm -it -m 500m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+```
 
 ```sh
 # Preparar los directorios para los archivos binarios

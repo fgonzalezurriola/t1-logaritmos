@@ -16,3 +16,8 @@ Makefile
 .vscode/
 .idea/
 *.log
+.bin
+bin/
+temp_merge_*/
+.txt
+.csv
