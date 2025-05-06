@@ -19,8 +19,13 @@ test:
 	make calculate_arity
 	./bin/calculate_arity
 
+# 187500000 187600000 187532953
+# ./bin/read temp_merge_172/merged_0.bin 374029760 375029760
+# ./bin/read dist/m_60/secuence_1.bin 374029760 375029760
 read:
-	./bin/read temp_merge_512/merged_0.bin 0 2000000
+	./bin/read dist/m_60/secuence_1.bin 374029760 375029760
+	./bin/read temp_merge_172/merged_0.bin 374029760 375029760
+
 
 # Compilar el código c++
 build:

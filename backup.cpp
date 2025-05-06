@@ -92,9 +92,7 @@ std::vector<int64_t> read_block(const std::string &filename, int64_t block_index
     return buffer;
 }
 
-void write_block(
-    const std::string &filename, int64_t block_index, const std::vector<int64_t> &buffer
-) {
+void write_block(const std::string &filename, int64_t block_index, const std::vector<int64_t> &buffer) {
     std::fstream out(filename, std::ios::in | std::ios::out | std::ios::binary);
     if (!out) {
         std::ofstream create(filename, std::ios::binary);
@@ -155,8 +153,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
 
         min_node.element_index++;
 
-        if (min_node.element_index >=
-            static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
+        if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
             min_node.block_index++;
             min_node.element_index = 0;
 
@@ -176,8 +173,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
 
     if (!output_buffer.empty()) {
         out_file.write(
-            reinterpret_cast<const char *>(output_buffer.data()),
-            output_buffer.size() * sizeof(int64_t)
+            reinterpret_cast<const char *>(output_buffer.data()), output_buffer.size() * sizeof(int64_t)
         );
         total_io_operations++;
     }
@@ -290,8 +286,7 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
             }
 
             if (files_in_group > 1) {
-                string merged_file =
-                    temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
+                string merged_file = temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
                 total_io_operations += k_way_merge(merge_files, merged_file);
                 new_run_files.push_back(merged_file);
 

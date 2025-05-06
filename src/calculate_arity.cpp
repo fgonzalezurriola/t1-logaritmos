@@ -15,6 +15,7 @@ using namespace std;
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
 const int64_t MAX_INITIAL_RUNS = 1000;
+const int64_t M = 3000238080;
 const string files_arity = "dist/arity_exp/";
 const string results_file = "results/arity_results.txt";
 
@@ -124,10 +125,11 @@ struct HeapNode {
 int64_t k_way_merge(const vector<string> &input_files, const string &output_file) {
     int64_t total_io_operations = 0;
 
+    // Todo: revisar
     const int64_t TOTAL_MEMORY_LIMIT = 500 * 1024 * 1024;
     const int64_t MAX_BLOCKS_PER_FILE = (TOTAL_MEMORY_LIMIT / input_files.size()) / BLOCK_SIZE;
-    // const int64_t BLOCKS_PER_READ = max((int64_t)1, min((int64_t)50, MAX_BLOCKS_PER_FILE));
-    const int64_t BLOCKS_PER_READ = 510;
+    const int64_t BLOCKS_PER_READ = max((int64_t)1, min((int64_t)50, MAX_BLOCKS_PER_FILE));
+    // const int64_t BLOCKS_PER_READ = 510;
 
     cout << "  K-way merge: Reading " << BLOCKS_PER_READ << " blocks at once per file" << endl;
 
@@ -144,6 +146,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
     // Load the first set of blocks for each file
     for (size_t i = 0; i < input_files.size(); ++i) {
         input_buffers[i] = read_multiple_blocks(input_files[i], 0, BLOCKS_PER_READ);
+
         // Count as one I/O operation per block we tried to read
         total_io_operations +=
             BLOCKS_PER_READ > 0
@@ -190,6 +193,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
             // Count I/O for each block read
             int64_t blocks_read =
                 (input_buffers[min_node.file_index].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
+
             total_io_operations += blocks_read > 0 ? blocks_read : 0;
 
             if (!input_buffers[min_node.file_index].empty()) {
@@ -250,15 +254,8 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     vector<string> run_files;
 
     cout << "  Phase 1: Sorting blocks in memory..." << endl;
-    int64_t last_percentage = -1;
 
     for (int64_t i = 0; i < num_blocks; i += blocks_per_run) {
-        int64_t current_percentage = (i * 100) / num_blocks;
-        if (current_percentage % 5 == 0 && current_percentage != last_percentage) {
-            cout << "    Progress: " << current_percentage << "% (" << i << "/" << num_blocks
-                 << " blocks)" << endl;
-            last_percentage = current_percentage;
-        }
 
         int64_t blocks_to_read = min(blocks_per_run, num_blocks - i);
 
@@ -293,11 +290,11 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     input.close();
 
     cout << "  Phase 2: Performing k-way merge..." << endl;
-    int merge_iteration = 0;
+    // int merge_iteration = 0;
 
     while (run_files.size() > 1) {
-        cout << "    Merge iteration " << merge_iteration++ << ": merging " << run_files.size()
-             << " files" << endl;
+        // cout << "    Merge iteration " << merge_iteration++ << ": merging " << run_files.size()
+        //      << " files" << endl;
 
         vector<string> new_run_files;
 
@@ -338,11 +335,11 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     if (!run_files.empty()) {
         cout << "  Copying final file to output location..." << endl;
         copy_file(run_files[0], output_file);
-        remove(run_files[0].c_str());
+        // remove(run_files[0].c_str());
     }
 
     cout << "  Clean temporary files..." << endl;
-    remove_directory(temp_dir);
+    // remove_directory(temp_dir);
 
     return total_io_operations;
 }
