@@ -20,7 +20,7 @@ test:
 	./bin/calculate_arity
 
 read:
-	./bin/read
+	./bin/read temp_merge_512/merged_0.bin 0 2000000
 
 # Compilar el código c++
 build:

@@ -1,22 +1,31 @@
 #include <algorithm>
 #include <calculate_arity.h>
 #include <chrono>
+#include <ctime>
 #include <fstream>
+#include <functional>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <map>
 #include <queue>
 #include <string>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 #include <vector>
 
 using namespace std;
 
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
+const int64_t M_SIZE = 50 * 1e6;
+const int64_t BLOCKS_PER_M = 12208; // 12207 + 1
 const int64_t MAX_INITIAL_RUNS = 1000;
-const string files_arity = "dist/arity_exp/";
-const string results_file = "results/arity_results.txt";
+
+void create_directory(const string &dir) {
+    mkdir(dir.c_str(), 0755);
+}
 
 void sort_in_memory(vector<int64_t> &data) {
     sort(data.begin(), data.end());
@@ -25,13 +34,23 @@ void sort_in_memory(vector<int64_t> &data) {
 void create_directories(const string &dir) {
     size_t pos = 0;
     string path;
+
     while ((pos = dir.find('/', pos)) != string::npos) {
         path = dir.substr(0, pos++);
         if (path.length() > 0) {
             mkdir(path.c_str(), 0755);
         }
     }
+
     mkdir(dir.c_str(), 0755);
+}
+
+void copy_file(const string &src, const string &dst) {
+    ifstream source(src, ios::binary);
+    ofstream dest(dst, ios::binary);
+    dest << source.rdbuf();
+    source.close();
+    dest.close();
 }
 
 void remove_directory(const string &dir) {
@@ -42,12 +61,36 @@ void remove_directory(const string &dir) {
     }
 }
 
-void copy_file(const string &src, const string &dst) {
-    ifstream source(src, ios::binary);
-    ofstream dest(dst, ios::binary);
-    dest << source.rdbuf();
-    source.close();
-    dest.close();
+const string files_arity = "dist/arity_exp/";
+const string results_file = "results/arity_results.txt";
+
+struct HeapNode {
+    int64_t value;
+    int64_t file_index;
+    int64_t block_index;
+    int64_t element_index;
+
+    bool operator>(const HeapNode &other) const {
+        return value > other.value;
+    }
+};
+
+vector<int64_t> read_block(const string &filename, int64_t block_index) {
+    vector<int64_t> buffer(INTS_PER_BLOCK);
+    ifstream in(filename, ios::binary);
+    if (!in) {
+        cerr << "Error opening file " << filename << endl;
+        exit(EXIT_FAILURE);
+    }
+    in.seekg(block_index * BLOCK_SIZE);
+    in.read(reinterpret_cast<char *>(buffer.data()), BLOCK_SIZE);
+
+    // Ajustar el tamaño del vector si se leyeron menos elementos que INTS_PER_BLOCK
+    if (in.gcount() != BLOCK_SIZE) {
+        buffer.resize(in.gcount() / sizeof(int64_t));
+    }
+    in.close();
+    return buffer;
 }
 
 void write_block(const string &filename, int64_t block_index, const vector<int64_t> &buffer) {
@@ -66,70 +109,10 @@ void write_block(const string &filename, int64_t block_index, const vector<int64
     if (!out) {
         cerr << "Error writing to block in file " << filename << endl;
     }
-    out.close();
 }
-
-// Function to read multiple blocks from a file into memory
-vector<int64_t>
-read_multiple_blocks(const string &filename, int64_t start_block, int64_t num_blocks_to_read) {
-    vector<int64_t> buffer;
-    buffer.reserve(num_blocks_to_read * INTS_PER_BLOCK);
-
-    ifstream in(filename, ios::binary);
-    if (!in) {
-        cerr << "Error opening file " << filename << endl;
-        exit(EXIT_FAILURE);
-    }
-
-    in.seekg(start_block * BLOCK_SIZE);
-
-    for (int64_t i = 0; i < num_blocks_to_read; i++) {
-        vector<int64_t> temp_buffer(INTS_PER_BLOCK);
-        in.read(reinterpret_cast<char *>(temp_buffer.data()), BLOCK_SIZE);
-
-        // If we reach end of file or read less than a complete block, dont read
-        if (in.gcount() == 0) {
-            break;
-        }
-
-        // Adjust size if we read a partial block
-        if (in.gcount() != BLOCK_SIZE) {
-            temp_buffer.resize(in.gcount() / sizeof(int64_t));
-        }
-
-        // Add the block to the main buffer
-        buffer.insert(buffer.end(), temp_buffer.begin(), temp_buffer.end());
-
-        // If we read less than a full block, we've reached the end
-        if (in.gcount() != BLOCK_SIZE) {
-            break;
-        }
-    }
-
-    in.close();
-    return buffer;
-}
-
-struct HeapNode {
-    int64_t value;
-    int64_t file_index;
-    int64_t block_index;
-    int64_t element_index;
-
-    bool operator>(const HeapNode &other) const {
-        return value > other.value;
-    }
-};
 
 int64_t k_way_merge(const vector<string> &input_files, const string &output_file) {
     int64_t total_io_operations = 0;
-
-    const int64_t TOTAL_MEMORY_LIMIT = 500 * 1024 * 1024;
-    const int64_t MAX_BLOCKS_PER_FILE = (TOTAL_MEMORY_LIMIT / input_files.size()) / BLOCK_SIZE;
-    // const int64_t BLOCKS_PER_READ = max((int64_t)1, min((int64_t)50, MAX_BLOCKS_PER_FILE));
-    const int64_t BLOCKS_PER_READ = 510;
-
-    cout << "  K-way merge: Reading " << BLOCKS_PER_READ << " blocks at once per file" << endl;
 
     ofstream out_file(output_file, ios::binary);
     if (!out_file) {
@@ -137,76 +120,63 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         exit(EXIT_FAILURE);
     }
 
-    // For each input file: buffer, current position in buffer, and current block
     vector<vector<int64_t>> input_buffers(input_files.size());
+    vector<int64_t> current_blocks(input_files.size(), 0);
+    vector<int64_t> current_elements(input_files.size(), 0);
+
     priority_queue<HeapNode, vector<HeapNode>, greater<HeapNode>> min_heap;
 
-    // Load the first set of blocks for each file
     for (size_t i = 0; i < input_files.size(); ++i) {
-        input_buffers[i] = read_multiple_blocks(input_files[i], 0, BLOCKS_PER_READ);
-        // Count as one I/O operation per block we tried to read
-        total_io_operations +=
-            BLOCKS_PER_READ > 0
-                ? min(BLOCKS_PER_READ,
-                      (int64_t)((input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK))
-                : 0;
+        input_buffers[i] = read_block(input_files[i], 0);
+        total_io_operations++;
 
         if (!input_buffers[i].empty()) {
             min_heap.push({input_buffers[i][0], static_cast<int64_t>(i), 0, 0});
         }
     }
 
-    // Buffer for output
     vector<int64_t> output_buffer;
     output_buffer.reserve(INTS_PER_BLOCK);
+    int64_t output_block_index = 0;
 
     while (!min_heap.empty()) {
         HeapNode min_node = min_heap.top();
         min_heap.pop();
 
-        // Add the minimum element to the output buffer
         output_buffer.push_back(min_node.value);
 
-        // If the output buffer is full, write it to disk
         if (output_buffer.size() == INTS_PER_BLOCK) {
             out_file.write(reinterpret_cast<const char *>(output_buffer.data()), BLOCK_SIZE);
             output_buffer.clear();
+            output_block_index++;
             total_io_operations++;
         }
 
-        // Advance to the next element in the current buffer
         min_node.element_index++;
 
-        // If we've exhausted the current buffer
-        if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
-            // Load more blocks from the file
-            min_node.block_index += BLOCKS_PER_READ;
+        if (min_node.element_index >=
+            static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
+            min_node.block_index++;
             min_node.element_index = 0;
 
-            input_buffers[min_node.file_index] = read_multiple_blocks(
-                input_files[min_node.file_index], min_node.block_index, BLOCKS_PER_READ
-            );
-
-            // Count I/O for each block read
-            int64_t blocks_read =
-                (input_buffers[min_node.file_index].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
-            total_io_operations += blocks_read > 0 ? blocks_read : 0;
+            input_buffers[min_node.file_index] =
+                read_block(input_files[min_node.file_index], min_node.block_index);
+            total_io_operations++;
 
             if (!input_buffers[min_node.file_index].empty()) {
                 min_node.value = input_buffers[min_node.file_index][0];
                 min_heap.push(min_node);
             }
         } else {
-            // Advance to the next element in the current buffer
             min_node.value = input_buffers[min_node.file_index][min_node.element_index];
             min_heap.push(min_node);
         }
     }
 
-    // Write any remaining data in the output buffer
     if (!output_buffer.empty()) {
         out_file.write(
-            reinterpret_cast<const char *>(output_buffer.data()), output_buffer.size() * sizeof(int64_t)
+            reinterpret_cast<const char *>(output_buffer.data()),
+            output_buffer.size() * sizeof(int64_t)
         );
         total_io_operations++;
     }
@@ -319,7 +289,8 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
             }
 
             if (files_in_group > 1) {
-                string merged_file = temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
+                string merged_file =
+                    temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
                 total_io_operations += k_way_merge(merge_files, merged_file);
                 new_run_files.push_back(merged_file);
 
@@ -355,54 +326,119 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
 
     create_directories("dist/arity_exp");
     create_directories("results");
-    string input_file = "dist/m_60/secuence_1.bin";
+
+    // Lista de todos los archivos de secuencia
+    vector<string> input_files =
+        {"dist/m_60/secuence_1.bin", "dist/m_60/secuence_2.bin", "dist/m_60/secuence_3.bin",
+         "dist/m_60/secuence_4.bin", "dist/m_60/secuence_5.bin"};
+
+    const int NUM_SEQUENCES = input_files.size();
 
     ofstream results_out(results_file);
-    results_out << "Arity,I/O's" << endl;
+    results_out
+        << "Arity,Average_IO,IO_Sequence1,IO_Sequence2,IO_Sequence3,IO_Sequence4,IO_Sequence5"
+        << endl;
 
+    // Map para almacenar resultados ya calculados y evitar cálculos redundantes
+    map<int64_t, vector<int64_t>> memoized_results;
+
+    // Función para evaluar operaciones de I/O para una aridad dada en todas las secuencias
+    auto evaluate_arity = [&](int64_t arity) -> int64_t {
+        // Verificar si ya hemos calculado esta aridad
+        if (memoized_results.find(arity) != memoized_results.end()) {
+            vector<int64_t> &cached_results = memoized_results[arity];
+            int64_t avg_io = 0;
+            for (int64_t io : cached_results) {
+                avg_io += io;
+            }
+            avg_io /= NUM_SEQUENCES;
+
+            cout << "  Using cached result for arity " << arity << ": avg=" << avg_io << " I/Os"
+                 << endl;
+            return avg_io;
+        }
+
+        cout << "\n  Testing arity: " << arity << endl;
+
+        vector<int64_t> io_results;
+        int64_t total_io = 0;
+
+        // Ejecutar mergesort para cada archivo de secuencia
+        for (int i = 0; i < NUM_SEQUENCES; i++) {
+            string input_file = input_files[i];
+            string output_file =
+                "dist/arity_exp/sorted_" + to_string(arity) + "_seq" + to_string(i + 1) + ".bin";
+
+            cout << "  Processing sequence " << (i + 1) << "..." << endl;
+            int64_t io_operations = external_mergesort(input_file, output_file, arity);
+            io_results.push_back(io_operations);
+            total_io += io_operations;
+
+            cout << "  I/O Operations for arity " << arity << " on sequence " << (i + 1) << ": "
+                 << io_operations << endl;
+        }
+
+        // Calcular promedio
+        int64_t avg_io = total_io / NUM_SEQUENCES;
+        cout << "  Average I/O Operations for arity " << arity << ": " << avg_io << endl;
+
+        // Guardar resultados en el archivo
+        results_out << arity << "," << avg_io;
+        for (int i = 0; i < NUM_SEQUENCES; i++) {
+            results_out << "," << io_results[i];
+        }
+        results_out << endl;
+
+        // Almacenar en caché los resultados
+        memoized_results[arity] = io_results;
+
+        return avg_io;
+    };
+
+    // Realizar búsqueda ternaria
     while (right - left > 4) {
         cout << "Current search interval: [" << left << ", " << right << "]" << endl;
 
+        // Calcular dos puntos intermedios
         int64_t m1 = left + (right - left) / 3;
         int64_t m2 = right - (right - left) / 3;
 
+        // Asegurarse de que m1 < m2 incluso para intervalos pequeños
         if (m1 >= m2) {
             m1 = left + (right - left) / 2 - 1;
             m2 = left + (right - left) / 2 + 1;
         }
 
-        cout << "\n  Testing arity: " << m1 << endl;
-        string output_file_m1 = "dist/arity_exp/sorted_" + to_string(m1) + ".bin";
-        int64_t io_m1 = external_mergesort(input_file, output_file_m1, m1);
-        cout << "  I/O Operations for arity " << m1 << ": " << io_m1 << endl;
-        results_out << m1 << "," << io_m1 << endl;
+        cout << "Evaluating middle points m1=" << m1 << " and m2=" << m2 << endl;
 
-        cout << "\n  Testing arity: " << m2 << endl;
-        string output_file_m2 = "dist/arity_exp/sorted_" + to_string(m2) + ".bin";
-        int64_t io_m2 = external_mergesort(input_file, output_file_m2, m2);
-        cout << "  I/O Operations for arity " << m2 << ": " << io_m2 << endl;
-        results_out << m2 << "," << io_m2 << endl;
+        // Evaluar en los puntos medios
+        int64_t io_m1 = evaluate_arity(m1);
+        int64_t io_m2 = evaluate_arity(m2);
 
+        // Actualizar el rango de búsqueda basado en la comparación
         if (io_m1 < io_m2) {
-            // Optimal value is in the left part [left, m2]
+            // Valor óptimo está en la parte izquierda [left, m2]
             right = m2;
-            cout << "I/O(" << m1 << ")=" << io_m1 << " < I/O(" << m2 << ")=" << io_m2
-                 << ", updating range to [" << left << ", " << right << "]" << endl;
+            cout << "Average I/O(" << m1 << ")=" << io_m1 << " < Average I/O(" << m2
+                 << ")=" << io_m2 << ", updating range to [" << left << ", " << right << "]"
+                 << endl;
         } else if (io_m2 < io_m1) {
-            // Optimal value is in the right part [m1, right]
+            // Valor óptimo está en la parte derecha [m1, right]
             left = m1;
-            cout << "I/O(" << m2 << ")=" << io_m2 << " < I/O(" << m1 << ")=" << io_m1
-                 << ", updating range to [" << left << ", " << right << "]" << endl;
+            cout << "Average I/O(" << m2 << ")=" << io_m2 << " < Average I/O(" << m1
+                 << ")=" << io_m1 << ", updating range to [" << left << ", " << right << "]"
+                 << endl;
         } else {
-            // Equal I/Os, narrow to [m1, m2]
+            // I/Os iguales, reducir a [m1, m2]
             left = m1;
             right = m2;
-            cout << "I/O(" << m1 << ")=" << io_m1 << " = I/O(" << m2 << ")=" << io_m2
-                 << ", updating range to [" << left << ", " << right << "]" << endl;
+            cout << "Average I/O(" << m1 << ")=" << io_m1 << " = Average I/O(" << m2
+                 << ")=" << io_m2 << ", updating range to [" << left << ", " << right << "]"
+                 << endl;
         }
     }
 
-    // Final linear search within the small remaining interval
+    // Búsqueda lineal final dentro del pequeño intervalo restante
     cout << "\n=========================================================" << endl;
     cout << "Final linear search in range [" << left << ", " << right << "]" << endl;
     cout << "=========================================================" << endl;
@@ -411,14 +447,23 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
     int64_t min_io = numeric_limits<int64_t>::max();
 
     for (int64_t arity = left; arity <= right; ++arity) {
-        string output_file = "dist/arity_exp/sorted_" + to_string(arity) + ".bin";
-        int64_t io_operations = external_mergesort(input_file, output_file, arity);
-        cout << "  I/O Operations for arity " << arity << ": " << io_operations << endl;
-        results_out << arity << "," << io_operations << endl;
+        int64_t io_operations = evaluate_arity(arity);
+
         if (io_operations < min_io) {
             min_io = io_operations;
             optimal_arity = arity;
         }
+    }
+
+    // Imprimir resultados detallados del óptimo encontrado
+    cout << "\nOptimal arity found: " << optimal_arity << endl;
+    cout << "Average I/O operations: " << min_io << endl;
+
+    // Mostrar detalles por secuencia
+    const vector<int64_t> &best_results = memoized_results[optimal_arity];
+    cout << "I/O operations by sequence:" << endl;
+    for (int i = 0; i < NUM_SEQUENCES; i++) {
+        cout << "  Sequence " << (i + 1) << ": " << best_results[i] << " I/Os" << endl;
     }
 
     results_out.close();
@@ -426,28 +471,26 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
     return optimal_arity;
 }
 
-void run_arity_experiment(int64_t min_arity, int64_t max_arity) {
+void run_arity_experiment(int64_t max_arity) {
     cout << "\n=========================================================" << endl;
-    cout << "Starting arity experiment with range [" << min_arity << ", " << max_arity << "]" << endl;
+    cout << "Starting arity experiment with max_arity = " << max_arity << endl;
     cout << "Current time: " << chrono::system_clock::now().time_since_epoch().count() << endl;
     cout << "=========================================================" << endl;
 
+    int64_t min_arity = 2; // Minimum valid arity
+
+    // Apply ternary search to find the optimal arity
     int64_t optimal_arity = ternary_search_optimal_arity(min_arity, max_arity);
 
     cout << "\n=========================================================" << endl;
+    cout << "Experiment completed!" << endl;
     cout << "Optimal arity found: " << optimal_arity << endl;
     cout << "Results saved to " << results_file << endl;
     cout << "=========================================================" << endl;
 }
 
-// int main(int argc, char *argv[]) {
-int main() {
-    int64_t min_arity = 2;
+int main(int argc, char *argv[]) {
     int64_t max_arity = 512;
-
-    cout << "Running arity experiment with range [" << min_arity << ", " << max_arity << "]" << endl;
-
-    run_arity_experiment(min_arity, max_arity);
-
+    run_arity_experiment(max_arity);
     return 0;
 }

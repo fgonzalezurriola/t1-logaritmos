@@ -39,8 +39,7 @@ void write_vector_to_file(
 void create_and_write_M(int64_t m_mult) {
     for (int j = 0; j < NUMBER_OF_SECUENCES; j++) {
         string index = to_string(j + 1);
-        string filename =
-            bin_dir + "/m_" + to_string(m_mult) + "/" + "secuence" + "_" + index + ".bin";
+        string filename = bin_dir + "/m_" + to_string(m_mult) + "/" + "secuence" + "_" + index + ".bin";
         // * BLOCKS_PER_M multiplied per m_mult to get 4M, 8M... etc.
         for (int i = 0; i < m_mult * BLOCKS_PER_M; i++) {
             vector<int64_t> vector = random_vector_int64(INTS_PER_BLOCK);
