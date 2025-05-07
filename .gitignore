@@ -19,5 +19,6 @@ Makefile
 .bin
 bin/
 temp_merge_*/
+temp_mergesort*/
 .txt
 .csv

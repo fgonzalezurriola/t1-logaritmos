@@ -20,8 +20,8 @@ using namespace std;
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
 const string bin_dir = "dist";
-const int64_t M_SIZE = 50 * 1e6;
-const int64_t BLOCKS_PER_M = M_SIZE / 4096 + 1; // 12208
+const int64_t M_SIZE = 50 * 1024 * 1024;
+const int64_t BLOCKS_PER_M = M_SIZE / 4096;
 const int64_t NUMBER_OF_SECUENCES = 5;
 
 void create_and_write_M(int64_t m_mult);
