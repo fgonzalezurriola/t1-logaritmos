@@ -67,20 +67,22 @@ void MergeSort(int arr[], int left, int right) {
     }
 }
 
-void MergeSort_N_ario(int N[], position, int arity){
-  int position_after_puntero = (len(N)-1)/arity + 1;
+int64_t external_mergesort(const string &input_file, const string &output_file, int64_t arity) {
 
-  for (int i = 0; i < len(N); i += position_after_puntero){
+    void MergeSort_N_ario(int N[], position, int arity){
+    int position_after_puntero = (len(N)-1)/arity + 1;
 
-    int puntero = i + (len(N)-1)/arity;
-    MergeSort_N_ario(N, N[i:puntero], arity);
+    for (int i = 0; i < len(N); i += position_after_puntero){
 
-    // el left en este caso sería la poisicón de i, el mid la posición de
-    // puntero y el right la posición justo despues de puntero
-    Merge(arr, i, puntero, position_after_puntero);
+        int puntero = i + (len(N)-1)/arity;
+        MergeSort_N_ario(N, N[i:puntero], arity);
 
-    }    
-  }
+        // el left en este caso sería la poisicón de i, el mid la posición de
+        // puntero y el right la posición justo despues de puntero
+        Merge(arr, i, puntero, position_after_puntero);
+
+        }    
+    }
 
 // Main function to execute the program
 int main() {
