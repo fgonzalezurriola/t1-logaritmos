@@ -36,8 +36,8 @@ void write_vector_to_file(
  * @returns void
  * @note the for ends after m_mult*BLOCKS_PER_M loops
  */
-void create_and_write_M(int64_t m_mult) {
-    for (int j = 0; j < NUMBER_OF_SECUENCES; j++) {
+void create_and_write_M(int64_t m_mult, int64_t n_secuences) {
+    for (int j = 0; j < n_secuences; j++) {
         string index = to_string(j + 1);
         string filename = bin_dir + "/m_" + to_string(m_mult) + "/" + "secuence" + "_" + index + ".bin";
         // * BLOCKS_PER_M multiplied per m_mult to get 4M, 8M... etc.
@@ -88,37 +88,3 @@ void write_vector_to_file(const string &filename, int64_t block_index, const vec
     out.close();
     return;
 }
-
-// // TODO: todo
-
-// // Devuelve un vector con los 512 enteros leídos, de momento si no tiene 512 enteros retorna
-// error vector<int64_t> read_block(const string &filename, int64_t block_index) {
-//     vector<int64_t> buffer(INTS_PER_BLOCK);
-//     ifstream in(filename, ios::binary);
-//     if (!in) {
-//         cerr << "Error opening file " << filename << endl;
-//         exit(EXIT_FAILURE);
-//     }
-//     in.seekg(block_index * BLOCK_SIZE);
-//     in.read(reinterpret_cast<char *>(buffer.data()), BLOCK_SIZE);
-//     return buffer;
-// }
-
-// void write_block(const string &filename, int64_t block_index, const vector<int64_t> &buffer) {
-//     fstream out(filename, ios::in | ios::out | ios::binary);
-//     if (!out) {
-//         cerr << "Error opening file " << filename << endl;
-//         exit(EXIT_FAILURE);
-//     }
-//     streampos file_offset = block_index * sizeof(block_index);
-//     out.seekp(block_index * BLOCK_SIZE);
-//     out.write(reinterpret_cast<const char *>(buffer.data()), BLOCK_SIZE);
-//     if (!out) {
-//         cerr << "Error writing to block in file " << filename << endl;
-//     }
-//     return;
-// }
-
-// void sort_in_memory(vector<int64_t> &data) {
-//     sort(data.begin(), data.end());
-// }

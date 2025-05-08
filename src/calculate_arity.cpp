@@ -21,21 +21,22 @@
 using namespace std;
 
 // create_secuences crea el archivo de tamaño 60M = 3GB con los que se hace el test
+// docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+// make prepare
+// make clean-arity
+// make run-arity
+// Todo: hacer make all-arity que haga las 3 reglas de arriba
 
 /**
  * @BLOCK_SIZE: 4096 bytes. Size of a disk block.
- * @INTS_PER_BLOCK: 512. Number of 64-bit integers that fit in a block.
- * @MAX_INITIAL_RUNS: 1000. Maximum number of initial runs.
+ * @INTS_PER_BLOCK: 512. Number of int64_t that fit in a block.
  * @TOTAL_MEMORY_RAM: 50MB. Memory available for in-memory sorting.
  * @files_arity: Directory where sequence files are located.
  * @results_file: File where experiment results will be written.
  */
 const int64_t BLOCK_SIZE = 4096;
-const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t); // 512
-const int64_t MAX_INITIAL_RUNS = 1000;                       // Todo: revisar
-const int64_t TOTAL_MEMORY_RAM =
-    500 * 1024 *
-    1024; // docker run --rm -it -m 500m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
+const int64_t TOTAL_MEMORY_RAM = 5 * 1024 * 1024;
 const string files_arity = "dist/arity_exp/";
 const string results_file = "results/arity_results.txt";
 
@@ -177,15 +178,18 @@ struct HeapNode {
  * @param output_file Path of the merged output file.
  * @return Total number of I/O operations performed.
  */
-int64_t k_way_merge(const vector<string> &input_files, const string &output_file) {
+int64_t k_way_merge(const vector<string> &input_files, const string &output_file, int64_t arity) {
     int64_t total_io_operations = 0;
-
-    // Calculate memory limit per file
-    const int64_t TOTAL_MEMORY_LIMIT = 500 * 1024 * 1024;
-    const int64_t MAX_BLOCKS_PER_FILE = (TOTAL_MEMORY_LIMIT / input_files.size()) / BLOCK_SIZE;
-    const int64_t BLOCKS_PER_READ = max((int64_t)1, min((int64_t)50, MAX_BLOCKS_PER_FILE));
-
-    cout << "  K-way merge: Reading " << BLOCKS_PER_READ << " blocks at once per file" << endl;
+    int64_t total_seeks = 0;
+    const int64_t buffer_size_per_file = TOTAL_MEMORY_RAM / (arity + 1);
+    int64_t blocks_per_buffer = buffer_size_per_file / BLOCK_SIZE;
+    if (blocks_per_buffer == 0)
+        blocks_per_buffer = 1;
+    const int64_t BLOCKS_PER_READ = blocks_per_buffer;
+    vector<vector<int64_t>> input_buffers(input_files.size());
+    priority_queue<HeapNode, vector<HeapNode>, greater<HeapNode>> min_heap;
+    vector<int64_t> output_buffer;
+    output_buffer.reserve(blocks_per_buffer * INTS_PER_BLOCK);
 
     ofstream out_file(output_file, ios::binary);
     if (!out_file) {
@@ -193,29 +197,16 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         exit(EXIT_FAILURE);
     }
 
-    vector<vector<int64_t>> input_buffers(input_files.size());
-    priority_queue<HeapNode, vector<HeapNode>, greater<HeapNode>> min_heap;
-
-    // Load the first set of blocks for each file
+    // Load the first set of blocks
     for (size_t i = 0; i < input_files.size(); i++) {
         input_buffers[i] = read_multiple_blocks(input_files[i], 0, BLOCKS_PER_READ);
-
-        // Count as one I/O operation per block we tried to read
-        // total_io_operations +=
-        //     BLOCKS_PER_READ > 0
-        //         ? min(BLOCKS_PER_READ,
-        //               (int64_t)((input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK))
-        //         : 0;
-        total_io_operations += input_buffers[i].size() / INTS_PER_BLOCK;
+        total_io_operations += (input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
+        total_seeks++;
 
         if (!input_buffers[i].empty()) {
             min_heap.push({input_buffers[i][0], static_cast<int64_t>(i), 0, 0});
         }
     }
-
-    // Output buffer
-    vector<int64_t> output_buffer;
-    output_buffer.reserve(INTS_PER_BLOCK);
 
     while (!min_heap.empty()) {
         HeapNode min_node = min_heap.top();
@@ -225,18 +216,19 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         output_buffer.push_back(min_node.value);
 
         // If output buffer is full, write it to disk
-        if (output_buffer.size() == INTS_PER_BLOCK) {
-            out_file.write(reinterpret_cast<const char *>(output_buffer.data()), BLOCK_SIZE);
+        if ((int64_t)output_buffer.size() == blocks_per_buffer * INTS_PER_BLOCK) {
+            out_file.write(
+                reinterpret_cast<const char *>(output_buffer.data()), blocks_per_buffer * BLOCK_SIZE
+            );
             output_buffer.clear();
-            total_io_operations++;
+            total_io_operations += blocks_per_buffer;
         }
 
-        // Move to the next element in the current buffer
+        // Next element
         min_node.element_index++;
 
-        // If we've exhausted the current buffer
+        // Refill the buffer if necessary
         if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
-            // Load more blocks from the file
             min_node.block_index += BLOCKS_PER_READ;
             min_node.element_index = 0;
 
@@ -244,18 +236,21 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
                 input_files[min_node.file_index], min_node.block_index, BLOCKS_PER_READ
             );
 
-            // Count I/O for each block read
-            int64_t blocks_read =
-                (input_buffers[min_node.file_index].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
+            // Todo: revisar función ceil
+            int64_t blocks_read = (input_buffers[min_node.file_index].size()) / INTS_PER_BLOCK;
 
             total_io_operations += blocks_read > 0 ? blocks_read : 0;
+
+            if (blocks_read > 0) {
+                total_seeks++;
+            }
 
             if (!input_buffers[min_node.file_index].empty()) {
                 min_node.value = input_buffers[min_node.file_index][0];
                 min_heap.push(min_node);
             }
         } else {
-            // Move to the next element in the current buffer
+            // Next element
             min_node.value = input_buffers[min_node.file_index][min_node.element_index];
             min_heap.push(min_node);
         }
@@ -266,11 +261,11 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         out_file.write(
             reinterpret_cast<const char *>(output_buffer.data()), output_buffer.size() * sizeof(int64_t)
         );
-        total_io_operations++;
+        total_io_operations += (output_buffer.size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
     }
 
     out_file.close();
-    return total_io_operations;
+    return total_io_operations + total_seeks;
 }
 
 /** external_mergesort
@@ -303,17 +298,13 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     cout << "  File size: " << file_size << " bytes" << endl;
     cout << "  Num blocks to process: " << num_blocks << endl;
 
-    // Todo: SIMPLIFICAR
-    int64_t blocks_per_run = 1;
-    if (num_blocks > MAX_INITIAL_RUNS) {
-        blocks_per_run = (num_blocks + MAX_INITIAL_RUNS - 1) / MAX_INITIAL_RUNS;
-        cout << "  Using " << blocks_per_run << " blocks per initial run" << endl;
-    }
+    int64_t blocks_per_run = TOTAL_MEMORY_RAM / BLOCK_SIZE;
+    if (blocks_per_run == 0)
+        blocks_per_run = 1;
+    cout << "  Using " << blocks_per_run << " blocks per initial run" << endl;
 
-    int64_t run_size = blocks_per_run * BLOCK_SIZE;
-    // Todo: simplificar
-    int64_t estimated_runs = (file_size + run_size - 1) / run_size;
-    cout << "  Estimated initial runs: " << estimated_runs << endl;
+    int64_t estimated_runs = num_blocks / blocks_per_run;
+    cout << "  Runs: " << estimated_runs << endl;
 
     vector<string> run_files;
 
@@ -348,22 +339,15 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
         run_files.push_back(run_file);
     }
 
-    cout << "  Phase 1 completed. Generated " << run_files.size() << " run files." << endl;
+    cout << "  Generated " << run_files.size() << " run files." << endl;
     input.close();
 
     cout << "  Phase 2: Performing k-way merge..." << endl;
 
     while (run_files.size() > 1) {
         vector<string> new_run_files;
-        int64_t num_groups = (run_files.size() + arity - 1) / arity;
 
         for (size_t i = 0; i < run_files.size(); i += arity) {
-            if (i % (arity * 5) == 0 || i == 0) {
-                int64_t current_group = i / arity + 1;
-                cout << "      Processing group " << current_group << " of " << num_groups << " ("
-                     << (current_group * 100 / num_groups) << "%)" << endl;
-            }
-
             vector<string> merge_files;
             size_t files_in_group = 0;
 
@@ -374,7 +358,8 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
 
             if (files_in_group > 1) {
                 string merged_file = temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
-                total_io_operations += k_way_merge(merge_files, merged_file);
+                total_io_operations += k_way_merge(merge_files, merged_file, merge_files.size());
+
                 new_run_files.push_back(merged_file);
 
                 for (const string &file : merge_files) {
@@ -430,17 +415,18 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
             m2 = left + (right - left) / 2 + 1;
         }
 
-        cout << "\n  Testing arity: " << m1 << endl;
-        string output_file_m1 = "dist/arity_exp/sorted_" + to_string(m1) + ".bin";
-        int64_t io_m1 = external_mergesort(input_file, output_file_m1, m1);
-        cout << "  I/O Operations for arity " << m1 << ": " << io_m1 << endl;
-        results_out << m1 << "," << io_m1 << endl;
-
+        // INVERTIDO: Primero calculamos el punto de la derecha (m2) y luego el de la izquierda (m1)
         cout << "\n  Testing arity: " << m2 << endl;
         string output_file_m2 = "dist/arity_exp/sorted_" + to_string(m2) + ".bin";
         int64_t io_m2 = external_mergesort(input_file, output_file_m2, m2);
         cout << "  I/O Operations for arity " << m2 << ": " << io_m2 << endl;
         results_out << m2 << "," << io_m2 << endl;
+
+        cout << "\n  Testing arity: " << m1 << endl;
+        string output_file_m1 = "dist/arity_exp/sorted_" + to_string(m1) + ".bin";
+        int64_t io_m1 = external_mergesort(input_file, output_file_m1, m1);
+        cout << "  I/O Operations for arity " << m1 << ": " << io_m1 << endl;
+        results_out << m1 << "," << io_m1 << endl;
 
         if (io_m1 < io_m2) {
             // Optimal value is in the left part [left, m2]
@@ -469,7 +455,8 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
     int64_t optimal_arity = left;
     int64_t min_io = numeric_limits<int64_t>::max();
 
-    for (int64_t arity = left; arity <= right; arity++) {
+    // También invierte el orden en la búsqueda lineal final (de derecha a izquierda)
+    for (int64_t arity = right; arity >= left; arity--) {
         string output_file = "dist/arity_exp/sorted_" + to_string(arity) + ".bin";
         int64_t io_operations = external_mergesort(input_file, output_file, arity);
         cout << "  I/O Operations for arity " << arity << ": " << io_operations << endl;
@@ -506,7 +493,6 @@ void run_arity_experiment(int64_t min_arity, int64_t max_arity) {
 
 /**
  * @brief Main function of the program.
- * @return Program exit code.
  */
 int main() {
     int64_t min_arity = 2;

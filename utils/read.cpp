@@ -26,6 +26,7 @@ void read_n_lines(const string &filename, int ini, int end) {
 }
 
 int main(int argc, char *argv[]) {
+    (void)argc;
     string path = argv[1];
     int ini = stoi(argv[2]);
     int end = stoi(argv[3]);

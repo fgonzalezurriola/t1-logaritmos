@@ -1,23 +1,49 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 
-# Construye carpetas y ejecuta el código compilado en bin/
-# run:
-# 	make prepare
-# 	./bin/create_secuences 4
-
-run:
+run-dist:
+	@echo "Compiling and running create_secuences"
 	make prepare
-	./bin/program 60
+	@./bin/create_secuences 60 5
 
+# Limpia la caché del sistema para obtener mediciones consistentes
+# Requiere permisos sudo para ejecutar
+clean-cache:
+	@echo "Sync..."
+	@sync
+	@echo "Cleaning CACHÉ... (SUDO REQUIRED)"
+	@sudo sh -c "echo 3 > /proc/sys/vm/drop_caches"
+	@echo "Success."
+	@sleep 1
+
+# Regenera el archivo de entrada para el experimento
+regenerate-input:
+	@mkdir -p dist/m_60
+	@./bin/create_secuences 60 1
+
+
+# Ejecuta el proceso completo con información detallada
 run-arity:
+	make clean
+	@echo "=== Experiment for Arity ==="
+	@echo "1. cleaning orphan files..."
+	make clean-arity
+	@echo "2. building directories and code..."
 	make prepare
 	make build
+	@echo "3. CLEANING CACHÉ"
+	make clean-cache
+	@echo "4. ..."
+	make regenerate-input
+	@echo "5. Ejecutando experimento de aridad..."
+	@sleep 2
 	make test
+	@echo "=== Success ==="
+	@echo "Result file in: results/arity_results.txt"
 
 test:
 	make calculate_arity
-	./bin/calculate_arity
+	@./bin/calculate_arity
 
 # 187500000 187600000 187532953
 # ./bin/read temp_merge_172/merged_0.bin 374029760 375029760
@@ -29,37 +55,39 @@ read:
 
 # Compilar el código c++
 build:
-	$(CXX) $(CXXFLAGS) src/main.cpp src/create_secuences.cpp -o bin/program
-	$(CXX) $(CXXFLAGS) utils/read.cpp -o bin/read
-	$(CXX) $(CXXFLAGS) src/calculate_arity.cpp -o bin/calculate_arity
+	@$(CXX) $(CXXFLAGS) src/main.cpp src/create_secuences.cpp -o bin/create_secuences
+	@$(CXX) $(CXXFLAGS) utils/read.cpp -o bin/read
+	@$(CXX) $(CXXFLAGS) src/calculate_arity.cpp -o bin/calculate_arity
 
 # Construir las carpetas para los archivos binarios desde 4 hasta 60
 prepare:
-	mkdir -p bin/ dist/m_4 dist/m_8 dist/m_12 dist/m_16 dist/m_20 \
+	@echo "=== Creating directories ==="
+	@mkdir -p bin/ dist/m_4 dist/m_8 dist/m_12 dist/m_16 dist/m_20 \
 	         dist/m_24 dist/m_28 dist/m_32 dist/m_36 dist/m_40 \
 	         dist/m_44 dist/m_48 dist/m_52 dist/m_56 dist/m_60 \
 	         results dist/arity_exp
 	make build
+	@echo "=== Success ==="
 
-# Si da error usar `sudo make (regla)`
-
-# Eliminar todos los archivos de bin/ y dist/
+# Eliminar todos los archivos temporales
 clean:
-	rm -rf bin/*
-	rm -rf dist/*
+	make clean-bin
+	make clean-build
+	make clean-arity
 
 # Eliminar todos los archivos de bin/
 clean-bin:
-	rm -rf bin/*
+	@rm -rf bin/*
 
 # Eliminar todos los archivos de dist/
 clean-build:
-	rm -rf dist/*
+	@rm -rf dist/*
 
+# Limpiar los archivos temporales y resultados de experimentos de aridad
 clean-arity:
-	rm -rf temp_merge_*
-	rm -rf results/*
-	rm -rf dist/arity_exp
+	@rm -rf results/*
+	@rm -rf dist/arity_exp
+	@rm -rf temp_*
 
 # Las reglas dentro de PHONY se tratarán como reglas de makefile en vez de archivos-directorios
-.PHONY: clean run prepare read test calculate_arity
+.PHONY: clean run prepare read test calculate_arity clean-cache regenerate-input run-arity

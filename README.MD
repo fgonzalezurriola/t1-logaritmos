@@ -7,7 +7,7 @@ C++
 Para ejecutar el código usar en la raiz del proyecto
 
 ```docker
-docker run --rm -it -m 500m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
 ```
 
 ```sh
