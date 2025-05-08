@@ -176,33 +176,38 @@ struct HeapNode {
  * @brief Performs a k-way merge of multiple sorted files.
  * @param input_files Vector with paths of input files.
  * @param output_file Path of the merged output file.
+ * @param arity The maximum number of files to merge at once.
  * @return Total number of I/O operations performed.
  */
 int64_t k_way_merge(const vector<string> &input_files, const string &output_file, int64_t arity) {
+    // Limitar el número de archivos según la aridad
+    int64_t actual_arity = min(static_cast<int64_t>(input_files.size()), arity);
+
     int64_t total_io_operations = 0;
     int64_t total_seeks = 0;
-    const int64_t buffer_size_per_file = TOTAL_MEMORY_RAM / (arity + 1);
+
+    // Calculamos el tamaño del buffer por archivo, asegurándonos de que todos tengan el mismo tamaño
+    // Reservamos memoria tanto para los input_buffers como para el output_buffer
+    const int64_t buffer_size_per_file = TOTAL_MEMORY_RAM / (actual_arity + 1);
     int64_t blocks_per_buffer = buffer_size_per_file / BLOCK_SIZE;
     if (blocks_per_buffer == 0)
         blocks_per_buffer = 1;
     const int64_t BLOCKS_PER_READ = blocks_per_buffer;
-    vector<vector<int64_t>> input_buffers(input_files.size());
+
+    vector<vector<int64_t>> input_buffers(actual_arity);
     priority_queue<HeapNode, vector<HeapNode>, greater<HeapNode>> min_heap;
     vector<int64_t> output_buffer;
     output_buffer.reserve(blocks_per_buffer * INTS_PER_BLOCK);
 
     ofstream out_file(output_file, ios::binary);
-    if (!out_file) {
-        cerr << "Error opening output file: " << output_file << endl;
+    if (!out_file)
         exit(EXIT_FAILURE);
-    }
 
-    // Load the first set of blocks
-    for (size_t i = 0; i < input_files.size(); i++) {
+    // Inicializamos solo los buffers para los archivos que vamos a procesar en esta pasada
+    for (size_t i = 0; i < actual_arity; i++) {
         input_buffers[i] = read_multiple_blocks(input_files[i], 0, BLOCKS_PER_READ);
         total_io_operations += (input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
         total_seeks++;
-
         if (!input_buffers[i].empty()) {
             min_heap.push({input_buffers[i][0], static_cast<int64_t>(i), 0, 0});
         }
@@ -211,11 +216,8 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
     while (!min_heap.empty()) {
         HeapNode min_node = min_heap.top();
         min_heap.pop();
-
-        // Add the minimum element to the output buffer
         output_buffer.push_back(min_node.value);
 
-        // If output buffer is full, write it to disk
         if ((int64_t)output_buffer.size() == blocks_per_buffer * INTS_PER_BLOCK) {
             out_file.write(
                 reinterpret_cast<const char *>(output_buffer.data()), blocks_per_buffer * BLOCK_SIZE
@@ -224,39 +226,29 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
             total_io_operations += blocks_per_buffer;
         }
 
-        // Next element
         min_node.element_index++;
 
-        // Refill the buffer if necessary
         if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
             min_node.block_index += BLOCKS_PER_READ;
             min_node.element_index = 0;
-
             input_buffers[min_node.file_index] = read_multiple_blocks(
                 input_files[min_node.file_index], min_node.block_index, BLOCKS_PER_READ
             );
-
-            // Todo: revisar función ceil
-            int64_t blocks_read = (input_buffers[min_node.file_index].size()) / INTS_PER_BLOCK;
-
-            total_io_operations += blocks_read > 0 ? blocks_read : 0;
-
-            if (blocks_read > 0) {
+            int64_t blocks_read =
+                (input_buffers[min_node.file_index].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
+            total_io_operations += blocks_read;
+            if (blocks_read > 0)
                 total_seeks++;
-            }
-
             if (!input_buffers[min_node.file_index].empty()) {
                 min_node.value = input_buffers[min_node.file_index][0];
                 min_heap.push(min_node);
             }
         } else {
-            // Next element
             min_node.value = input_buffers[min_node.file_index][min_node.element_index];
             min_heap.push(min_node);
         }
     }
 
-    // Write any remaining data in the output buffer
     if (!output_buffer.empty()) {
         out_file.write(
             reinterpret_cast<const char *>(output_buffer.data()), output_buffer.size() * sizeof(int64_t)
@@ -293,11 +285,11 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     int64_t file_size = input.tellg();
     input.seekg(0);
 
-    // Todo: Revisar
     int64_t num_blocks = (file_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
     cout << "  File size: " << file_size << " bytes" << endl;
     cout << "  Num blocks to process: " << num_blocks << endl;
 
+    // Limitamos la memoria usada por cada buffer según la RAM disponible
     int64_t blocks_per_run = TOTAL_MEMORY_RAM / BLOCK_SIZE;
     if (blocks_per_run == 0)
         blocks_per_run = 1;
@@ -310,6 +302,7 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
 
     cout << "  Phase 1: Sorting blocks in memory..." << endl;
 
+    // Fase 1: Crear runs iniciales ordenados en memoria
     for (int64_t i = 0; i < num_blocks; i += blocks_per_run) {
         int64_t blocks_to_read = min(blocks_per_run, num_blocks - i);
         vector<int64_t> large_block;
@@ -323,7 +316,7 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
                 block.resize(elements_read);
                 large_block.insert(large_block.end(), block.begin(), block.end());
             }
-            total_io_operations++;
+            total_io_operations++; // Contamos cada lectura de bloque
         }
 
         sort_in_memory(large_block);
@@ -334,7 +327,8 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
             reinterpret_cast<const char *>(large_block.data()), large_block.size() * sizeof(int64_t)
         );
         run_out.close();
-        total_io_operations++;
+        total_io_operations += (large_block.size() + INTS_PER_BLOCK - 1) /
+                               INTS_PER_BLOCK; // Contamos cada escritura de bloque
 
         run_files.push_back(run_file);
     }
@@ -342,31 +336,51 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     cout << "  Generated " << run_files.size() << " run files." << endl;
     input.close();
 
+    // Fase 2: Realizar merges k-way en múltiples pasadas hasta que quede un solo archivo
     cout << "  Phase 2: Performing k-way merge..." << endl;
 
+    int64_t pass_number = 0;
     while (run_files.size() > 1) {
+        pass_number++;
         vector<string> new_run_files;
+        cout << "    Pass " << pass_number << ": Merging " << run_files.size() << " files with arity "
+             << arity << endl;
 
+        // Procesamos los archivos en grupos de 'aridad' archivos a la vez
         for (size_t i = 0; i < run_files.size(); i += arity) {
-            vector<string> merge_files;
-            size_t files_in_group = 0;
+            vector<string> files_to_merge;
 
+            // Seleccionamos hasta 'aridad' archivos para esta mezcla
             for (size_t j = i; j < i + arity && j < run_files.size(); j++) {
-                merge_files.push_back(run_files[j]);
-                files_in_group++;
+                files_to_merge.push_back(run_files[j]);
             }
 
-            if (files_in_group > 1) {
-                string merged_file = temp_dir + "merged_" + to_string(new_run_files.size()) + ".bin";
-                total_io_operations += k_way_merge(merge_files, merged_file, merge_files.size());
+            // Si solo hay un archivo en este grupo, lo pasamos directamente a la siguiente fase
+            if (files_to_merge.size() == 1) {
+                string new_file = temp_dir + "pass_" + to_string(pass_number) + "_" +
+                                  to_string(new_run_files.size()) + ".bin";
+                copy_file(files_to_merge[0], new_file);
+                new_run_files.push_back(new_file);
+
+                // Eliminamos el archivo original si no es el mismo que el nuevo
+                if (files_to_merge[0] != new_file) {
+                    remove(files_to_merge[0].c_str());
+                }
+            } else {
+                // Realizamos merge de múltiples archivos (hasta 'aridad')
+                string merged_file = temp_dir + "pass_" + to_string(pass_number) + "_" +
+                                     to_string(new_run_files.size()) + ".bin";
+
+                // Usamos k_way_merge con la aridad y contamos las I/O
+                int64_t merge_io = k_way_merge(files_to_merge, merged_file, files_to_merge.size());
+                total_io_operations += merge_io;
 
                 new_run_files.push_back(merged_file);
 
-                for (const string &file : merge_files) {
+                // Eliminamos los archivos intermedios que ya fueron mezclados
+                for (const string &file : files_to_merge) {
                     remove(file.c_str());
                 }
-            } else if (files_in_group == 1) {
-                new_run_files.push_back(merge_files[0]);
             }
         }
 
@@ -374,9 +388,18 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
         run_files = new_run_files;
     }
 
+    // Copiamos el resultado final
     if (!run_files.empty()) {
         cout << "  Copying final file to output location..." << endl;
         copy_file(run_files[0], output_file);
+
+        // Contamos esta copia como operaciones de I/O
+        ifstream final_file(run_files[0], ios::binary | ios::ate);
+        if (final_file) {
+            int64_t size = final_file.tellg();
+            total_io_operations += (size + BLOCK_SIZE - 1) / BLOCK_SIZE * 2; // Lectura y escritura
+            final_file.close();
+        }
     }
 
     cout << "  Clean temporary files..." << endl;
