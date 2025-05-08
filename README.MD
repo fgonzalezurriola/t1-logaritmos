@@ -1,31 +1,5 @@
 # Tarea 1 Logaritmos
 
-## Lenguaje de programación
-
-C++
-
-Para ejecutar el código usar en la raiz del proyecto
-
-```docker
-docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
-```
-
-```sh
-# Preparar los directorios para los archivos binarios
-make prepare
-```
-
-```sh
-# Compilar el código cpp
-make build
-```
-
-```sh
-# El código se ejecutará segun lo escrito en make run
-# (ejecutará create_secuences pasandole un M=4, creando las 5 secuencias en dist/m_4)
-make run
-```
-
 ## Requisitos
 
 ### Para Windows
@@ -45,7 +19,13 @@ make --version
 clang-format --version
 ```
 
-### Para Linux debian-based
+Nota: usar la terminal de msys2 para ejecutar los comandos make, ya que msys2 trae los comandos unix que usa el Makefile.
+
+Alternativamente usar [docker desktop](https://docs.docker.com/desktop/setup/install/windows-install/) y seguir las instrucciones para instalar docker en Windows.
+
+Alternativamente usar WSL (Windows Subsystem for Linux) y seguir las instrucciones para Linux.
+
+### Para Linux Debian-based
 
 En una terminal
 
@@ -54,63 +34,64 @@ sudo apt update && \
 sudo apt install gcc && \
 sudo apt install make && \
 sudo apt install clang-format
+sudo apt install docker.io
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker $USER
 ```
 
 ### Para Mac
 
-```sh
-// No estoy seguro de si se instala así brew (gestor de paquetes):
+````sh
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew --version
 brew install gcc
 brew install make
 brew install clang-format
-```
+brew install --cask docker
+open /Applications/Docker.app
 
-### g++
-
-Para compilar usar
 
 ```sh
-# usar el compilador con c++17, sobre el archivo nombre.cpp y que el archivo de output sea binario.extension
-g++ -std=c++17 nombreArchivo.cpp -o nombreArchivoSalida
-```
+docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+````
+
+### Requisitos para Gráficos
+
+Tener instalado python o python3
 
 ```sh
-# La flag O2 optimiza el código. Wall añade advertencias comunes, Wextra añade aún más advertencias
-g++ -std=c++17 -O2 -Wall nombreArchivo.cpp -o nombreArchivoSalida
+# Crear venv
+python3 -m venv venv
+source venv/bin/activate
+# Instalar librerías
+pip install pandas matplotlib
 ```
+
+## Ejecución de la Tarea
+
+Utilizar el siguiente comando en la raiz del proyecto para ejecutar el contenedor de docker:
 
 ```sh
-# Ni idea que hace pero uso esto en progcomp cada vez que algo salía mal
-g++ -std=c++17 -Wall -Wextra -pedantic -O2 -Wshadow \
--Wformat=2 -Wfloat-equal -Wconversion -Wlogical-op -Wshift-overflow=2 \
--Wduplicated-cond -Wcast-qual -Wcast-align -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC \
--D_FORTIFY_SOURCE=2 -fsanitize=address -fsanitize=undefined -fno-sanitize-recover \
--fstack-protector nombreArchivo.cpp -o nombreArchivoSalida
+docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
 ```
 
-Y para correr el código usar
+Ejecución de la experimentación cpp y el graficado con python:
 
 ```sh
-/binario.extension
+make run-all
 ```
 
-### Docker
+El flujo será el siguiente:
 
-Para simplificar, docker levanta en una especie de "Maquina virtual" (contenedor) con lo mínimo para correr programas.
-En las instrucciones se pide crear un contenedor con 500MB de ram.
+1. Se crean las carpetas
+2. Se compila el código cpp
+3. Se ejecuta el main.cpp
 
-[Instrucciones](https://hub.docker.com/r/pabloskewes/cc4102-cpp-env)
+Dentro de main.cpp
 
-### Extensiones
-
-1. C/C++ Microsoft (aceptar el extension pack) (Esta extensión fue quitada de los forks de vscode por si usan alguno)
-2. Clang-Format
-3. Makefile Tools Microsoft
-4. Better Comments
-5. Path Intellisense
-6. Error Lens (Desde esta son opcionales)
-7. vscode-pdf
-
-Podríamos llegar a usar la extensión Live Share para codear en conjunto
+1. Se ejecuta el experimento para obtener la mejor aridad (creando una secuencia de 60M)
+2. Para cada M se ejecuta el experimento con Mergesort, (evitando colapsar la memoria secundaria).
+3. Para cada M se ejecuta el experimento con Quicksort.
+4. Se toman los resultados y se grafican con python.
+5. Se eliminan los archivos temporales.

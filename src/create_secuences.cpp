@@ -15,14 +15,12 @@ using namespace std;
  * *@bin_dir: Directory name with the binaries files
  * *@M_SIZE: 50*100.000 = 50 Megabytes. Value of M
  * *@BLOCKS_PER_M: 12207//4096 = 12207, using +1 for well ¿rounded? numbers
- * *@NUMBER_OF_SECUENCES: times of secuences = 5
  */
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
 const string bin_dir = "dist";
 const int64_t M_SIZE = 50 * 1024 * 1024;
 const int64_t BLOCKS_PER_M = M_SIZE / 4096;
-const int64_t NUMBER_OF_SECUENCES = 5;
 
 void create_and_write_M(int64_t m_mult);
 std::vector<int64_t> random_vector_int64(int64_t n);
