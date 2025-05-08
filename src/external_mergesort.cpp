@@ -222,18 +222,14 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     cout << "  Phase 2: Performing k-way merge..." << endl;
 
     // This while:
-    // Merges runs in groups of 'arity' files
-    // In each pass:
+    // Merges runs
+    // In each pass, in groups of 'arity' files:
     //  - Process runs in groups of 'arity' files
     //  - For each group, merge all runs into a single sorted output file
     //  - After merging, delete the input run files to save disk space
     //  - The new merged runs become input for the next pass
-    // 3. Continue until only one run file remains (the fully sorted file)
-    // 4. The number of passes required is approximately log_arity(num_runs)
-    // 5. The arity parameter controls the trade-off between:
-    //    - Number of passes (fewer with higher arity)
-    //    - I/O operations per pass (more with higher arity)
-    //
+    // Continue until only one run file remains
+    // Number of runs: log_arity(num_runs)
     int64_t pass_number = 0;
     while (run_files.size() > 1) {
         pass_number++;
