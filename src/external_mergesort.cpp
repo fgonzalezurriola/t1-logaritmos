@@ -32,6 +32,9 @@ void copy_file(const string &src, const string &dst);
  * @param arity The maximum number of files to merge at once.
  * @return Total number of I/O operations performed.
  */
+// Todo: Esperar la respuesta de los aux
+// Todo: Probablemente para el experimento de la aridad haya que limitar la aridad
+// TOdo: o limitar la cantidad de runs, de momento usar aridad 29 o 62
 int64_t k_way_merge(const vector<string> &input_files, const string &output_file, int64_t arity) {
     int64_t actual_arity = min((int64_t)(input_files.size()), arity);
     // if (actual_arity == (int64_t)input_files.size()) {
@@ -39,7 +42,8 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
     // }
     int64_t total_io_operations = 0;
     int64_t total_seeks = 0;
-    const int64_t buffer_size_per_file = TOTAL_MEMORY_RAM / (actual_arity + 1);
+    // Todo: ver si con menos límite "ram", corre en docker
+    const int64_t buffer_size_per_file = (TOTAL_MEMORY_RAM * 0.9) / (actual_arity + 1);
     int64_t blocks_per_buffer = buffer_size_per_file / BLOCK_SIZE;
     if (blocks_per_buffer == 0)
         blocks_per_buffer = 1;
@@ -250,17 +254,17 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
     // To watch if the file is sorted uncomment this
     // and modify the make read rule to verify the file
 
-    // if (!run_files.empty()) {
-    //     cout << "  Copying final file to output location..." << endl;
-    //     copy_file(run_files[0], output_file);
-    //     ifstream final_file(run_files[0], ios::binary | ios::ate);
-    //     if (final_file) {
-    //         int64_t size = final_file.tellg();
-    //         total_io_operations += (size + BLOCK_SIZE - 1) / BLOCK_SIZE * 2;
-    //         final_file.close();
-    //     }
-    // }
-    // remove_directory(output_file);
+    if (!run_files.empty()) {
+        cout << "  Copying final file to output location..." << endl;
+        copy_file(run_files[0], output_file);
+        ifstream final_file(run_files[0], ios::binary | ios::ate);
+        if (final_file) {
+            int64_t size = final_file.tellg();
+            total_io_operations += (size + BLOCK_SIZE - 1) / BLOCK_SIZE * 2;
+            final_file.close();
+        }
+    }
+    remove_directory(output_file);
 
     cout << "  Clean temporary files..." << endl;
     remove_directory(temp_dir);

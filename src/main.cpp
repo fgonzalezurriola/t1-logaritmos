@@ -116,15 +116,15 @@ int main(int argc, char *argv[]) {
     const vector<int64_t> m_mults{4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
 
     // Read the best arity stored in results/best_arity.txt
-    ifstream best_arity_file("results/best_arity.txt");
-    if (!best_arity_file) {
-        cerr << "Error opening best_arity file" << endl;
-        exit(EXIT_FAILURE);
-    }
 
-    int64_t arity;
-    best_arity_file >> arity;
-    best_arity_file.close();
+    // Todo: Esperar que respondan los auxiliares sino dejarlo en 29 o 62
+    // Todo: y explicar en el informe
+    int64_t arity = 62;
+    ifstream best_arity_file("results/best_arity.txt");
+    if (best_arity_file) {
+        best_arity_file >> arity;
+        best_arity_file.close();
+    }
 
     // Run quicksort experiment
     // Todo: quicksort
