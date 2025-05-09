@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <ctime>
 #include <fstream>
 #include <iostream>
@@ -86,3 +87,18 @@ void write_vector_to_file(const string &filename, int64_t block_index, const vec
     out.close();
     return;
 }
+
+#ifdef CREATE_SECUENCES_MAIN
+int main(int argc, char *argv[]) {
+    (void)argc;
+    int64_t m_mult = stoi(argv[1]);
+    int64_t n_secuences = stoi(argv[2]);
+    cout << "Creating secuences" << endl;
+    const auto start_create{chrono::steady_clock::now()};
+    create_and_write_M(m_mult, n_secuences);
+    const auto finish_create{chrono::steady_clock::now()};
+    const chrono::duration<double> elapsed_seconds_create{finish_create - start_create};
+    cout << "Time used for M=60: " << elapsed_seconds_create.count() << "seconds" << endl;
+    return 0;
+}
+#endif

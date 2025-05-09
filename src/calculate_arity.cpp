@@ -240,7 +240,7 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right) {
  * @param min_arity Minimum arity to test.
  * @param max_arity Maximum arity to test.
  */
-int64_t run_arity_experiment(int64_t min_arity, int64_t max_arity) {
+void run_arity_experiment(int64_t min_arity, int64_t max_arity) {
     cout << "\n=========================================================" << endl;
     cout << "Starting arity experiment with range [" << min_arity << ", " << max_arity << "]" << endl;
     cout << "Current time: " << chrono::system_clock::now().time_since_epoch().count() << endl;
@@ -253,9 +253,10 @@ int64_t run_arity_experiment(int64_t min_arity, int64_t max_arity) {
     cout << "Results saved to " << results_file << endl;
     cout << "=========================================================" << endl;
     ofstream("results/best_arity.txt") << optimal_arity << endl;
-    return optimal_arity;
+    return;
 }
 
+#ifdef CALCULATE_ARITY_MAIN
 /**
  * @brief Main function of the program.
  */
@@ -265,7 +266,8 @@ int main() {
 
     cout << "Running arity experiment with range [" << min_arity << ", " << max_arity << "]" << endl;
 
-    int64_t optimal_arity = run_arity_experiment(min_arity, max_arity);
+    run_arity_experiment(min_arity, max_arity);
 
     return 0;
 }
+#endif

@@ -2,6 +2,8 @@
 
 ## Requisitos
 
+Nota: eliminar los .csv a mano si se quiere volver a correr el experimento.
+
 ### Para Windows
 
 Instalar [gestor de paquetes Chocolatey](https://chocolatey.org/install#individual) y usar en powershell o cmd con parmisos de administrador

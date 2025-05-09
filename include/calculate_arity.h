@@ -87,6 +87,6 @@ int64_t ternary_search_optimal_arity(int64_t left, int64_t right);
  * @param max_arity Maximum arity to test.
  * @return The optimal arity found.
  */
-int64_t run_arity_experiment(int64_t min_arity, int64_t max_arity);
+void run_arity_experiment(int64_t min_arity, int64_t max_arity);
 
 #endif

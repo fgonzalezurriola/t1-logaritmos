@@ -19,6 +19,8 @@ void function() {
     return;
 }
 
+#ifdef EXTERNAL_QUICKSORT_MAIN
 int main() {
     return 0;
 }
+#endif

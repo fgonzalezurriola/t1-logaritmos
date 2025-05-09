@@ -34,9 +34,9 @@ void copy_file(const string &src, const string &dst);
  */
 int64_t k_way_merge(const vector<string> &input_files, const string &output_file, int64_t arity) {
     int64_t actual_arity = min((int64_t)(input_files.size()), arity);
-    if (actual_arity == input_files.size()) {
-        cout << "DEBUG: Using all input files for merging." << endl;
-    }
+    // if (actual_arity == (int64_t)input_files.size()) {
+    //     cout << "DEBUG: using the imput_files size." << endl;
+    // }
     int64_t total_io_operations = 0;
     int64_t total_seeks = 0;
     const int64_t buffer_size_per_file = TOTAL_MEMORY_RAM / (actual_arity + 1);
@@ -45,33 +45,6 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         blocks_per_buffer = 1;
     const int64_t BLOCKS_PER_READ = blocks_per_buffer;
 
-    /* K-way Merge Algorithm:
-     * 1. Memory Management:
-     *    - Divide available memory among input files and one output buffer
-     *    - Each input file gets a buffer to hold blocks_per_buffer blocks
-     *    - Larger arity means smaller buffers per file
-     *
-     * 2. Data Structures:
-     *    - input_buffers: Array of buffers, one per input file
-     *    - min_heap: Priority queue that keeps track of the smallest element across all files
-     *      - Each heap node contains: value, file_index, block_index, element_index
-     *    - output_buffer: Buffer for accumulating output before writing to disk
-     *
-     * 3. Algorithm Flow:
-     *    - Initially fill buffers from each input file
-     *    - Insert the first element from each buffer into the min heap
-     *    - While the heap is not empty:
-     *      a. Extract minimum element and add to output buffer
-     *      b. When output buffer is full, write to disk
-     *      c. Get the next element from the buffer that provided the min element
-     *      d. If buffer is exhausted, refill it from the corresponding file
-     *      e. Insert the new element into the heap
-     *
-     * 4. I/O Efficiency:
-     *    - Reads and writes are performed in blocks to amortize I/O costs
-     *    - Only required seeks are performed when a buffer is exhausted
-     *    - Tracks total I/O operations for performance analysis
-     */
     vector<vector<int64_t>> input_buffers(actual_arity);
     priority_queue<HeapNode, vector<HeapNode>, greater<HeapNode>> min_heap;
     vector<int64_t> output_buffer;
@@ -81,8 +54,17 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
     if (!out_file)
         exit(EXIT_FAILURE);
 
-    // Initial filling of buffers and heap
-    for (size_t i = 0; i < actual_arity; i++) {
+    // K-way Merge Algoritm:
+    // Flow:
+    //  - Initially fill buffers from each input file
+    //  - Insert the first element from each buffer into the min heap
+    //  - While the heap is not empty:
+    //     Extract minimum element and add to output buffer
+    //     When output buffer is full, write to disk
+    //     Get the next element from the buffer that provided the min element
+    //     If buffer is exhausted, refill it from the corresponding file
+    //     Insert the new element into the heap
+    for (int64_t i = 0; i < actual_arity; i++) {
         input_buffers[i] = read_multiple_blocks(input_files[i], 0, BLOCKS_PER_READ);
         total_io_operations += (input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
         total_seeks++;
@@ -91,7 +73,6 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         }
     }
 
-    // Main merge loop: extract minimum element, add to output, get next element
     while (!min_heap.empty()) {
         HeapNode min_node = min_heap.top();
         min_heap.pop();
@@ -108,7 +89,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
 
         min_node.element_index++;
 
-        // If we've exhausted the current buffer, read more data from disk
+        // If buffer is exhausted, refill
         if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
             min_node.block_index += BLOCKS_PER_READ;
             min_node.element_index = 0;
@@ -125,13 +106,13 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
                 min_heap.push(min_node);
             }
         } else {
-            // Get next element from current buffer
+            // get next element
             min_node.value = input_buffers[min_node.file_index][min_node.element_index];
             min_heap.push(min_node);
         }
     }
 
-    // Write any remaining data in output buffer
+    // Write any missing data in output buffer
     if (!output_buffer.empty()) {
         out_file.write(
             reinterpret_cast<const char *>(output_buffer.data()), output_buffer.size() * sizeof(int64_t)
@@ -266,19 +247,22 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
         run_files = new_run_files;
     }
 
-    if (!run_files.empty()) {
-        cout << "  Copying final file to output location..." << endl;
-        copy_file(run_files[0], output_file);
-        ifstream final_file(run_files[0], ios::binary | ios::ate);
-        if (final_file) {
-            int64_t size = final_file.tellg();
-            total_io_operations += (size + BLOCK_SIZE - 1) / BLOCK_SIZE * 2;
-            final_file.close();
-        }
-    }
+    // To watch if the file is sorted uncomment this
+    // and modify the make read rule to verify the file
+
+    // if (!run_files.empty()) {
+    //     cout << "  Copying final file to output location..." << endl;
+    //     copy_file(run_files[0], output_file);
+    //     ifstream final_file(run_files[0], ios::binary | ios::ate);
+    //     if (final_file) {
+    //         int64_t size = final_file.tellg();
+    //         total_io_operations += (size + BLOCK_SIZE - 1) / BLOCK_SIZE * 2;
+    //         final_file.close();
+    //     }
+    // }
+    // remove_directory(output_file);
 
     cout << "  Clean temporary files..." << endl;
     remove_directory(temp_dir);
-
     return total_io_operations;
 }
