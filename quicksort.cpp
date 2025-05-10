@@ -23,13 +23,6 @@ std::vector<int> generar_pivotes(int cant_pivotes, int max) {
           ind_pivotes.push_back(indices);
       }
   }
-
-  //imprimir arreglo resultante
-  /*for (int numero : ind_pivotes) {
-      std::cout << numero << " ";
-  }
-  std::cout << std::endl;*/
-
   return ind_pivotes;
 }
 
@@ -59,10 +52,12 @@ void partition(std::vector<int> &N, int arity){
 }}
 
 const int64_t M = 50 * 1024 * 1024;
-int64_t file_size = A.tellg();
+int64_t file_size = N.tellg();
 
-void quicksort_N_ario(std::vector<int> &N, int puntero, int arity){
+void quicksort_N_ario(std::vector<int> &N, int arity){
 
+  partition(N, arity);
+  
   if (file_size <= M){
     std::sort(N.begin(), N.end());
   }
@@ -86,24 +81,12 @@ void quicksort_N_ario(std::vector<int> &N, int puntero, int arity){
     bloque_aleatorio = dist(rng);
     
     // se lee el bloque aleatorio
+    // es read_n_lines y tiene que recibir un número n de lineas a leer
     char lol;
     read_block(&lol, bloque_aleatorio);
 
-    // elegir 𝑎 − 1 de sus elementos al azar y ordenarlos
-    partition(N, arity);
-
     // pivots es el arreglo de índices ordenado
-    // pivots_arreglo son los números N[pivots[i]] ordenados
-
-    // hay que asignar en las posiciones ordenadas de los índices (pivots)
-    // los valores ordenados del arreglo (pivots_arreglo)
-
-    for (int i = 0; i <= arity - 1; i++){
-      N[pivots[i]] = pivots_arreglo[i];
-    }
-    // esta wea hacerla en el archivo binario dios sepa como D:
-    // luego de hacer esto, se supone que en ela rreglo N en las posiciones
-    // pivots (N[pivots]) estarán los valores ordenados de esas posiciones del arreglo
+    // pivots_arreglo son los números N[pivots[i]] ordenados que ya se generó
 
     // la cantidad de numeros que contiene el arreglo A será de
     int cant_ints = file_size/8;
@@ -112,54 +95,54 @@ void quicksort_N_ario(std::vector<int> &N, int puntero, int arity){
     // subarreglos sean separados por los pivotes elegidos
 
     // creamos los a arreglos vacios primero
-    std::vector<int> vector_de_vectores;
+    std::vector<std::vector<int>> vector_de_vectores;
     
     for(int i = 0; i <= arity; i++){
         vector_de_vectores.push_back(std::vector<int>()); // agrega un vector<int> vacío
     }
 
-    for (int i = 0; i<= arity; i++){
-      std::vector<int> sub_arreglo_i;
-      for (int j = 0; j <= cant_ints; j++){
-        // devuelve true si el índice que esta viendo en el arreglo es el mismo
-        // indice que el del pivot, si es ese el caso, ++
-        if (std::find(pivots.begin(), pivots.end(), j) != pivots.end()){
+    // for para ver uno a uno los elementos del bloque N
+    for (int i = 0; i <= cant_ints - 1; i++){
+      // for para poder moverse entre el arreglo pivots_arreglo y comparar
+      for (int j = 0; j <= arity - 2; j++){
+        if(N[i] <= pivots_arreglo[j]){  
+          vector_de_vectores[0].push_back(N[i]);
+        }
+        else{
           continue;
         }
-
-        else{
-          // pivots posee arity - 1 elementos
-          // el int posicion marcará el índice dentro de pivots y a que vector <arreglo_i> se debe añadir
-          int posicion = 0;
-          while(posicion <= arity - 1){
-            if(N[j] <= N[pivots[posicion]]){
-              vector_de_vectores[posicion].push_back(N[j]);
-            }
-            else{
-              posicion++;
-            }
-          }
-
-          // cuando posición > arity - 1, ya se termino de recorrer el arreglo de pivots, entonces el elemento
-          // N[j] pertenece al último arreglo (<arreglo_a>)
-          vector_de_vectores[arity].push_back(N[j]);
-          }
-          
-      }}}
-
-    // bubblesort para poder ordenar los pivotes en el arreglo A y
-    // poder preguntar dato a dato sobre su valor con respecto al pivote mas
-    // cercano de forma iterativa para poder definir su posicion final en 
-    // los subarreglos
-        // for(int i=0; i <= indices.len; i++){
-        //  if A[ind[i]] > A[ind[i+1]]{
-        //    (A[i], A[i+1]) = (A[i+1], A[i])
-        //  }
-      //  }
-      }
+      vector_de_vectores[arity-1].push_back(N[i]);
+      } 
     }
 
-}}
+  std::vector<int> resultado;
+  // Este for se encarga de, si el vector_de_vectores de la iteración tiene
+  // largo 1 (posee solo 1 elemento), ya esta redy y tiene que pasar al siguiente,
+  // donde sino posee largo uno llama iterativamente a quicksort_N_ario
+    for (int k = 0; k <= arity - 1; k++){
+      if (vector_de_vectores[k].size() > 1){
+        quicksort_N_ario(vector_de_vectores[k], vector_de_vectores[k].size());
+      } 
+      // no se pueden asegurar el generar arity sub-arreglos en cada sub-arreglo
+      // depende del tamaño de cada uno
+      resultado.insert(resultado.end(), vector_de_vectores[k].begin(), vector_de_vectores[k].end());
+      
+      for (const auto& subvector : vector_de_vectores) {
+        resultado.insert(resultado.end(), subvector.begin(), subvector.end());
+        
+      }
+
+      vector_de_vectores = resultado;
+
+      N = resultado;
+    }
+    }
+
+}
+
+    // En este punto cada vector dentro del arreglo vector_de_vectores esta lleno
+    // ahora falta la recursión
+  }}
 
 int main() {
   int a[] = {2, 6, 5, 1, 3, 4};
