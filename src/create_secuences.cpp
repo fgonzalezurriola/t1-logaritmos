@@ -11,11 +11,11 @@
 using namespace std;
 
 /**
- * *@BLOCK_SIZE: 4096. Use `stat -f /` in Linux/Mac
+ * *@BLOCK_SIZE: 4096. Use `stat -f /` in Unix
  * *@INTS_PER_BLOCK: 4096/8 = 512. Number of Ints64 in one block
  * *@bin_dir: Directory name with the binaries files
- * *@M_SIZE: 50*100.000 = 50 Megabytes. Value of M
- * *@BLOCKS_PER_M: 12207//4096 = 12207, using +1 for well ¿rounded? numbers
+ * *@M_SIZE: 50*1024 * 1024 = 50 Megabytes. Value of M
+ * *@BLOCKS_PER_M: M_SIZE//BLOCK_SIZE = 12800
  */
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);

@@ -16,17 +16,19 @@ prepare-all:
 	make build
 	./bin/create_secuences 60 1
 	@echo "=== Success ==="
+
+# Regla asumiendo que se usó prepare-all para correr todo, CON EXPERIMENTO ARIDAD
 simple-all:
 	@echo  "=== Running main.cpp ==="
 	./bin/main 1
 	@echo "=== Success ==="
+
+# Regla asumiendo que se usó prepare-all para correr todo, sin EXPERIMENTO ARIDAD
 simple-all-no-experiment:
 	@echo  "=== Running main.cpp ==="
+	rm dist/m_60/secuence_1.bin
 	./bin/main 0
 	@echo "=== Success ==="
-
-
-
 
 run-all-no-experiment:
 	@echo "=== Running main.cpp ==="
@@ -83,7 +85,7 @@ read:
 # Targets para compilar cada programa por separado
 build-main:
 	@mkdir -p bin
-	$(CXX) $(CXXFLAGS) src/main.cpp src/calculate_arity.cpp src/create_secuences.cpp src/external_mergesort.cpp -o bin/main
+	$(CXX) $(CXXFLAGS) src/main.cpp src/calculate_arity.cpp src/create_secuences.cpp src/external_mergesort.cpp src/external_quicksort.cpp -o bin/main
 
 build-create_secuences:
 	@mkdir -p bin
@@ -97,18 +99,13 @@ build-calculate_arity:
 	@mkdir -p bin
 	$(CXX) $(CXXFLAGS) -DCALCULATE_ARITY_MAIN src/calculate_arity.cpp src/external_mergesort.cpp -o bin/calculate_arity
 
-# Comentado hasta que quicksort esté implementado
-# build-external_quicksort:
-# 	@mkdir -p bin
-# 	$(CXX) $(CXXFLAGS) -DEXTERNAL_QUICKSORT_MAIN src/external_quicksort.cpp -o bin/external_quicksort
-
 # Para bibliotecas compartidas
 build-libs:
 	@mkdir -p obj
 	$(CXX) $(CXXFLAGS) -c src/calculate_arity.cpp -o obj/calculate_arity.o
 	$(CXX) $(CXXFLAGS) -c src/create_secuences.cpp -o obj/create_secuences.o
 	$(CXX) $(CXXFLAGS) -c src/external_mergesort.cpp -o obj/external_mergesort.o
-	# $(CXX) $(CXXFLAGS) -c src/external_quicksort.cpp -o obj/external_quicksort.o
+	$(CXX) $(CXXFLAGS) -c src/external_quicksort.cpp -o obj/external_quicksort.o
 
 # Compilar el código cpp
 build: build-main build-create_secuences build-read build-calculate_arity
@@ -142,6 +139,10 @@ clean-arity:
 	rm -rf results/*
 	rm -rf dist/arity_exp/*
 	rm -rf temp_*
+
+clean-temp:
+	rm -rf temp_*
+	rm -rf results/*
 
 # Las reglas dentro de PHONY se tratan como reglas de makefile en vez de archivos-directorios
 .PHONY: clean run prepare read-test test clean-cache regenerate-input run-arity build-main \

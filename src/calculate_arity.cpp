@@ -1,12 +1,14 @@
 #include <algorithm>
 #include <calculate_arity.h>
 #include <chrono>
+#include <cstdlib>
 #include <external_mergesort.h>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <map>
 #include <queue>
+#include <random>
 #include <string>
 #include <sys/stat.h>
 #include <vector>

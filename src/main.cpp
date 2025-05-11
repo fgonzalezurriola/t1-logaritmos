@@ -71,11 +71,12 @@ void run_sorting_experiment(
             int64_t total_io = 0;
 
             if (algorithm == "mergesort") {
-                total_io = external_mergesort(input_file, output_file, arity);
+                // ! Explicarlo en el informe
+                int64_t mergesort_arity = 29;
+                total_io = external_mergesort(input_file, output_file, mergesort_arity);
             } else if (algorithm == "quicksort") {
-                // Todo: quicksort
-                // total_io = external_quicksort(input_file, output_file);
-                cout << "Quicksort not implemented yet" << endl;
+                int64_t quicksort_arity = 29;
+                total_io = external_quicksort(input_file, output_file, quicksort_arity);
             }
 
             const auto finish_sort{chrono::steady_clock::now()};
@@ -105,7 +106,8 @@ int main(int argc, char *argv[]) {
         cout << "==========================================" << endl;
         cout << "Running: calculate_arity between [2, 512]" << endl;
         const auto start_create{chrono::steady_clock::now()};
-        run_arity_experiment(2, 512);
+        // ! Explicarlo en el informe
+        run_arity_experiment(2, 62);
         const auto finish_create{chrono::steady_clock::now()};
         const chrono::duration<double> elapsed_seconds_create{finish_create - start_create};
         cout << "Time used for calculate_arity: " << elapsed_seconds_create.count() << "seconds" << endl;
@@ -119,19 +121,17 @@ int main(int argc, char *argv[]) {
 
     // Todo: Esperar que respondan los auxiliares sino dejarlo en 29 o 62
     // Todo: y explicar en el informe
-    int64_t arity = 62;
+    int64_t arity = 29;
     ifstream best_arity_file("results/best_arity.txt");
     if (best_arity_file) {
         best_arity_file >> arity;
         best_arity_file.close();
     }
 
-    // Run quicksort experiment
-    // Todo: quicksort
-    // ! Mergesort deletes the m_secuences, use quicksort first
-    // run_sorting_experiment("quicksort", 0, m_mults, n_secuences);
+    // Run quicksort experiment first
+    run_sorting_experiment("quicksort", arity, m_mults, n_secuences);
 
-    // Run mergesort experiment
+    // Run mergesort experiment second
     run_sorting_experiment("mergesort", arity, m_mults, n_secuences);
 
     return 0;

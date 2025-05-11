@@ -11,13 +11,10 @@
 
 using namespace std;
 
-// Using constants defined in calculate_arity.cpp
-// These are not exported with extern, so we need to define them here
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
-const int64_t TOTAL_MEMORY_RAM = 50 * 1024 * 1024;
+const int64_t TOTAL_MEMORY_RAM = (40 * 1024 * 1024);
 
-// Forward declarations for functions from calculate_arity.cpp that we'll use
 vector<int64_t>
 read_multiple_blocks(const string &filename, int64_t start_block, int64_t num_blocks_to_read);
 void sort_in_memory(vector<int64_t> &data);
@@ -152,7 +149,6 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
 
     int64_t file_size = input.tellg();
     input.seekg(0);
-
     int64_t num_blocks = (file_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
     int64_t blocks_per_run = TOTAL_MEMORY_RAM / BLOCK_SIZE;
     if (blocks_per_run == 0)
@@ -251,9 +247,8 @@ int64_t external_mergesort(const string &input_file, const string &output_file, 
         run_files = new_run_files;
     }
 
-    // To watch if the file is sorted uncomment this
-    // and modify the make read rule to verify the file
-
+    // Note: To watch if the file is sorted uncommment this and the remove_directory()
+    // and modify the -make read- rule to verify the file
     if (!run_files.empty()) {
         cout << "  Copying final file to output location..." << endl;
         copy_file(run_files[0], output_file);
