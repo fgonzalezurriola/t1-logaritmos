@@ -151,3 +151,4 @@ Makefile
 bin/
 temp_merge_*/
 temp_mergesort*/
+temp_quick*

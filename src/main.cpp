@@ -116,7 +116,8 @@ int main(int argc, char *argv[]) {
 
     int64_t n_secuences = 5;
     // const vector<int64_t> m_mults{4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
-    const vector<int64_t> m_mults{4, 12, 20, 28, 36, 44, 52, 60};
+    // const vector<int64_t> m_mults{4, 12, 20, 28, 36, 44, 52, 60};
+    const vector<int64_t> m_mults{8, 16, 24, 32, 40, 48, 56};
     // Read the best arity stored in results/best_arity.txt
 
     // Todo: Esperar que respondan los auxiliares sino dejarlo en 29 o 62

@@ -34,7 +34,7 @@ using namespace std;
  */
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
-const int64_t TOTAL_MEMORY_RAM = 50 * 1024 * 1024;
+const int64_t TOTAL_MEMORY_RAM = 40 * 1024 * 1024;
 const string results_file = "results/arity_results.txt";
 
 /** sort_in_memory
