@@ -97,6 +97,7 @@
     "shared_mutex": "cpp",
     "typeindex": "cpp",
     "valarray": "cpp",
-    "stack": "cpp"
+    "stack": "cpp",
+    "__tree": "cpp"
   }
 }
