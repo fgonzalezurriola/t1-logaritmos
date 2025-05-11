@@ -30,12 +30,6 @@ simple-all-no-experiment:
 	./bin/main 0	
 	@echo "=== Success ==="
 
-simple-all-no-experiment-windows:
-	@echo  "=== Running main.cpp ==="
-	rm dist/m_60/secuence_1.bin
-	./bin/main 0
-	@echo "=== Success ==="
-
 run-all-no-experiment:
 	@echo "=== Running main.cpp ==="
 	make prepare
