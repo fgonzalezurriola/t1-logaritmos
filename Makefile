@@ -23,8 +23,14 @@ simple-all:
 	./bin/main 1
 	@echo "=== Success ==="
 
-# Regla asumiendo que se usó prepare-all para correr todo, sin EXPERIMENTO ARIDAD
+# Regla asumiendo que se usó prepare-all para correr todo, SIN EXPERIMENTO ARIDAD
 simple-all-no-experiment:
+	@echo  "=== Running main.cpp ==="
+	rm dist/m_60/secuence_1.bin
+	./bin/main 0	
+	@echo "=== Success ==="
+
+simple-all-no-experiment-windows:
 	@echo  "=== Running main.cpp ==="
 	rm dist/m_60/secuence_1.bin
 	./bin/main 0
@@ -143,6 +149,12 @@ clean-arity:
 clean-temp:
 	rm -rf temp_*
 	rm -rf results/*
+
+# Regla para generar solamente los gráficos
+graphics:
+	@echo "=== Generating plots ==="
+	python3 plot_experiment.py
+	@echo "=== Plots saved in results/graficos/ ==="
 
 # Las reglas dentro de PHONY se tratan como reglas de makefile en vez de archivos-directorios
 .PHONY: clean run prepare read-test test clean-cache regenerate-input run-arity build-main \
