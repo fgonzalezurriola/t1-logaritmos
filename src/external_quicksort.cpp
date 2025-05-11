@@ -104,13 +104,23 @@ vector<int64_t> select_pivots(const string &input_file, int64_t arity) {
  * @param output_file Path to the output file
  * @return Number of I/O operations performed
  */
-int64_t concatenate_partitions(const vector<string> &sorted_files, const string &output_file) {
+int64_t
+concatenate_partitions(const vector<string> &sorted_files, const string &output_file, int64_t arity) {
     int64_t io_count = 0;
     ofstream output(output_file, ios::binary);
 
     if (!output) {
         cerr << "Error opening output file: " << output_file << endl;
         exit(EXIT_FAILURE);
+    }
+
+    // !
+    int64_t buffer_size = CONCAT_BUFFER_SIZE;
+    if (arity >= 32) {
+        buffer_size = CONCAT_BUFFER_SIZE / 2;
+    }
+    if (arity >= 64) {
+        buffer_size = CONCAT_BUFFER_SIZE / 4;
     }
 
     vector<char> buffer(CONCAT_BUFFER_SIZE);
@@ -203,7 +213,7 @@ int64_t recursive_external_quicksort(
     vector<int64_t> pivots = select_pivots(input_file, arity);
     io_operations += 2;
     const int64_t READ_BUFFER_BYTES = TOTAL_MEMORY_RAM * 0.2;
-    const int64_t PARTITION_BUFFER_BYTES = (TOTAL_MEMORY_RAM * 0.8) / arity;
+    const int64_t PARTITION_BUFFER_BYTES = (TOTAL_MEMORY_RAM * 0.7) / arity;
 
     const int64_t MIN_PARTITION_BUFFER = BLOCK_SIZE;
     const int64_t PARTITION_BUFFER_SIZE =
@@ -348,7 +358,7 @@ int64_t recursive_external_quicksort(
         }
     }
 
-    io_operations += concatenate_partitions(sorted_partition_files, output_file);
+    io_operations += concatenate_partitions(sorted_partition_files, output_file, arity);
 
     for (const string &file : sorted_partition_files) {
         remove(file.c_str());
