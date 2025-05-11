@@ -72,10 +72,10 @@ void run_sorting_experiment(
 
             if (algorithm == "mergesort") {
                 // ! Explicarlo en el informe
-                int64_t mergesort_arity = 29;
+                int64_t mergesort_arity = 62;
                 total_io = external_mergesort(input_file, output_file, mergesort_arity);
             } else if (algorithm == "quicksort") {
-                int64_t quicksort_arity = 29;
+                int64_t quicksort_arity = 62;
                 total_io = external_quicksort(input_file, output_file, quicksort_arity);
             }
 
@@ -115,13 +115,13 @@ int main(int argc, char *argv[]) {
     }
 
     int64_t n_secuences = 5;
-    const vector<int64_t> m_mults{4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
-
+    // const vector<int64_t> m_mults{4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
+    const vector<int64_t> m_mults{4, 12, 20, 28, 36, 44, 52, 60};
     // Read the best arity stored in results/best_arity.txt
 
     // Todo: Esperar que respondan los auxiliares sino dejarlo en 29 o 62
     // Todo: y explicar en el informe
-    int64_t arity = 29;
+    int64_t arity = 62;
     ifstream best_arity_file("results/best_arity.txt");
     if (best_arity_file) {
         best_arity_file >> arity;

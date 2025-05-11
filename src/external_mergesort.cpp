@@ -13,7 +13,7 @@ using namespace std;
 
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
-const int64_t TOTAL_MEMORY_RAM = (40 * 1024 * 1024);
+const int64_t TOTAL_MEMORY_RAM = (45 * 1024 * 1024);
 
 vector<int64_t>
 read_multiple_blocks(const string &filename, int64_t start_block, int64_t num_blocks_to_read);
@@ -70,7 +70,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         total_io_operations += (input_buffers[i].size() + INTS_PER_BLOCK - 1) / INTS_PER_BLOCK;
         total_seeks++;
         if (!input_buffers[i].empty()) {
-            min_heap.push({input_buffers[i][0], static_cast<int64_t>(i), 0, 0});
+            min_heap.push({input_buffers[i][0], (int64_t)i, 0, 0});
         }
     }
 
@@ -91,7 +91,7 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
         min_node.element_index++;
 
         // If buffer is exhausted, refill
-        if (min_node.element_index >= static_cast<int64_t>(input_buffers[min_node.file_index].size())) {
+        if (min_node.element_index >= (int64_t)(input_buffers[min_node.file_index].size())) {
             min_node.block_index += BLOCKS_PER_READ;
             min_node.element_index = 0;
             input_buffers[min_node.file_index] = read_multiple_blocks(
