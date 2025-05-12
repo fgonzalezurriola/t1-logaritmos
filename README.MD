@@ -2,18 +2,42 @@
 
 ## Ejecución de la Tarea
 
-Con docker instalado utilizar el siguiente comando en la raiz del proyecto para ejecutar el contenedor de docker:
+Primero clonar el repositorio:
 
 ```sh
-docker run --rm -it -m 50m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+git clone
 ```
+
+Para este paso es necesario instalar make y g++ (Ver requisitos abajo). Se ejecuta antes de la ejecución del contenedor de Docker debido a que la flag -O2 que optimiza el código cpp usa más de 50mb de memoria.
 
 ```sh
 make prepare-all
+```
+
+Para obtener el experimento de aridad, no es necesario limitar tanto la memoria, además de que ciertos spikes de memoria pueden botar el programa, por lo que se recomienda usar 500mb de memoria. El código internamente aún se limita a 50mb.
+
+Con docker instalado utilizar el siguiente comando en la raiz del proyecto para ejecutar el contenedor de docker:
+
+```sh
+docker run --rm -it -m 500m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
+```
+
+Ahora ejecutar el experimento de aridad:
+
+```sh
+make run-all-experiment
+```
+
+Luego, salir del contenedor con `exit` y ejecutar el nuevo contenedor con 50mb de ram:
+
+```sh
+docker run --rm -it -m 500m -v "$PWD":/workspace pabloskewes/cc4102-cpp-env bash
 make simple-all
 ```
 
-Al terminar simple-all se guardan dos archivos CSV en results/, luego para los gráficos:
+Al terminar el experimento de aridad, se guarda un archivo txt con la mejor aridad. Al terminar el experimento de quicksort y mergesort se guardan dos archivos CSV en results/. Para obtener los gráficos se debe ejecutar lo siguiente:
+
+Es necesario tener python o python3 instalado y usar el venv, ver los requisitos debajo.
 
 ```sh
 python3 -m venv venv
@@ -22,19 +46,7 @@ pip install pandas matplotlib numpy os
 make graphics
 ```
 
-Para graficar
-
-Tener instalado python o python3
-
-```sh
-# Crear venv
-python3 -m venv venv
-source venv/bin/activate
-# Instalar librerías
-pip install pandas matplotlib numpy
-# usar la regla para los gráficos
-make graphics
-```
+Con todo esto ejecutado se tiene toda la ejecución del experimento pedido.
 
 ## Descripción del experimento
 
@@ -65,17 +77,12 @@ Explicación de main.cpp
 
 Docker o Docker Desktop
 Python o Python3
-
 Debido a que el experimento se corre en docker, no es necesario tener más dependencias.
-
-## Requisitos Dev
 
 Esto fue usado para desarrollar la tarea, no es necesario tenerlo para correr el experimento.
 
-````sh
 Nota: la tarea fue desarollada en debian 12 bookworm, en cierto punto se probó en windows.
 de todas formas utilice docker para correr el experimento.
-Nota: eliminar los .csv a mano si se quiere volver a correr el experimento.
 
 ### Para Windows
 
@@ -84,7 +91,7 @@ Instalar [gestor de paquetes Chocolatey](https://chocolatey.org/install#individu
 ```sh
 choco install mingw make llvm msys2 -y
 refreshenv
-````
+```
 
 Comprobar con:
 
