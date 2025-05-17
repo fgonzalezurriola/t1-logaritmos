@@ -14,9 +14,18 @@ using namespace std;
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
 const int64_t TOTAL_MEMORY_RAM = 40 * 1024 * 1024;
-const int64_t CONCAT_BUFFER_SIZE = 1 * 1024 * 1024 / 4;
+const int64_t CONCAT_BUFFER_SIZE = 256 * 1024;
 
 int64_t total_io_operations = 0;
+
+/**
+ * @brief List of vector methods used and their purpose:
+ *
+ * - reserve(n): Pre-allocates space for n elements to avoid reallocations.
+ * - push_back(x): Adds x to the end of the vector (used to fill buffers).
+ * - clear(): Empties the vector but keeps the allocated memory.
+ * - swap(vec): Frees the memory by swapping with an empty vector.
+ */
 
 vector<int64_t>
 read_multiple_blocks(const string &filename, int64_t start_block, int64_t num_blocks_to_read);
@@ -95,7 +104,8 @@ vector<int64_t> select_pivots(const string &input_file, int64_t arity) {
  * @param output_file Path to the output file
  * @return Number of I/O operations performed
  */
-int64_t concatenate_partitions(const vector<string> &sorted_files, const string &output_file) {
+int64_t
+concatenate_partitions(const vector<string> &sorted_files, const string &output_file, int64_t arity) {
     int64_t io_count = 0;
     ofstream output(output_file, ios::binary);
 
@@ -104,8 +114,23 @@ int64_t concatenate_partitions(const vector<string> &sorted_files, const string 
         exit(EXIT_FAILURE);
     }
 
+    // !
+    int64_t buffer_size = CONCAT_BUFFER_SIZE;
+    if (arity >= 32) {
+        buffer_size = CONCAT_BUFFER_SIZE / 2;
+    }
+    if (arity >= 64) {
+        buffer_size = CONCAT_BUFFER_SIZE / 4;
+    }
+
     vector<char> buffer(CONCAT_BUFFER_SIZE);
 
+    // This for:
+    // Iterates over each sorted partition file.
+    // For each file:
+    //  - Opens and reads it in blocks.
+    //  - Writes each block to the final output file.
+    //  - Counts each read and write as an I/O operation.
     for (const string &file : sorted_files) {
         ifstream input(file, ios::binary);
         if (!input)
@@ -188,7 +213,7 @@ int64_t recursive_external_quicksort(
     vector<int64_t> pivots = select_pivots(input_file, arity);
     io_operations += 2;
     const int64_t READ_BUFFER_BYTES = TOTAL_MEMORY_RAM * 0.2;
-    const int64_t PARTITION_BUFFER_BYTES = (TOTAL_MEMORY_RAM * 0.8) / arity;
+    const int64_t PARTITION_BUFFER_BYTES = (TOTAL_MEMORY_RAM * 0.7) / arity;
 
     const int64_t MIN_PARTITION_BUFFER = BLOCK_SIZE;
     const int64_t PARTITION_BUFFER_SIZE =
@@ -217,6 +242,14 @@ int64_t recursive_external_quicksort(
     vector<int64_t> read_buffer(READ_BUFFER_SIZE);
     vector<int64_t> total_partition_elements(arity, 0);
 
+    // This while:
+    // Reads the input file in fixed-size blocks (READ_BUFFER_BYTES).
+    // For each block read:
+    //  - For each element in the block:
+    //    - Determines which partition it belongs to using the pivots.
+    //    - Adds the element to the corresponding partition buffer (push_back).
+    //    - If the partition buffer is full, writes it to disk and clears it.
+    // Continues until the entire file has been read and partitioned.
     while (input) {
         input.read(reinterpret_cast<char *>(read_buffer.data()), READ_BUFFER_BYTES);
         int64_t elems_read = input.gcount() / sizeof(int64_t);
@@ -227,6 +260,12 @@ int64_t recursive_external_quicksort(
 
         io_operations++;
 
+        // This for:
+        // Iterates over all elements read from the current block.
+        // For each element:
+        //  - Determines the partition using binary search on the pivots.
+        //  - Adds the element to the corresponding partition buffer.
+        //  - If the buffer is full, writes it to disk and clears it.
         for (int64_t i = 0; i < elems_read; i++) {
             int64_t val = read_buffer[i];
 
@@ -272,12 +311,19 @@ int64_t recursive_external_quicksort(
     vector<string> sorted_partition_files;
     sorted_partition_files.reserve(arity);
 
+    // This for:
+    // Iterates over each generated partition file.
+    // For each partition:
+    //  - If it is empty, skips.
+    //  - If it is very small, sorts it in memory and write.
+    //  - If it is large, recursively calls quicksort.
+    //  - Removes temporary files after processing.
     for (int64_t i = 0; i < arity; i++) {
-        ifstream check_file(partition_files[i], ios::binary | ios::ate);
+        ifstream file(partition_files[i], ios::binary | ios::ate);
         int64_t partition_size = 0;
-        if (check_file) {
-            partition_size = check_file.tellg();
-            check_file.close();
+        if (file) {
+            partition_size = file.tellg();
+            file.close();
         }
 
         if (partition_size <= 0) {
@@ -286,20 +332,17 @@ int64_t recursive_external_quicksort(
         }
 
         if (partition_size <= BLOCK_SIZE * 2) {
-            vector<int64_t> small_data(partition_size / sizeof(int64_t));
-            ifstream small_in(partition_files[i], ios::binary);
-            small_in.read(reinterpret_cast<char *>(small_data.data()), partition_size);
-            small_in.close();
+            vector<int64_t> sdata(partition_size / sizeof(int64_t));
+            ifstream s_file_in(partition_files[i], ios::binary);
+            s_file_in.read(reinterpret_cast<char *>(sdata.data()), partition_size);
+            s_file_in.close();
             io_operations++;
-
-            sort_in_memory(small_data);
-
+            sort_in_memory(sdata);
             string sorted_file = temp_dir + "sorted_" + to_string(depth) + "_" + to_string(i) + ".bin";
-            ofstream small_out(sorted_file, ios::binary);
-            small_out.write(reinterpret_cast<const char *>(small_data.data()), partition_size);
-            small_out.close();
+            ofstream s_file_out(sorted_file, ios::binary);
+            s_file_out.write(reinterpret_cast<const char *>(sdata.data()), partition_size);
+            s_file_out.close();
             io_operations++;
-
             sorted_partition_files.push_back(sorted_file);
             remove(partition_files[i].c_str());
             continue;
@@ -315,7 +358,7 @@ int64_t recursive_external_quicksort(
         }
     }
 
-    io_operations += concatenate_partitions(sorted_partition_files, output_file);
+    io_operations += concatenate_partitions(sorted_partition_files, output_file, arity);
 
     for (const string &file : sorted_partition_files) {
         remove(file.c_str());

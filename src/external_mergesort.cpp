@@ -13,7 +13,7 @@ using namespace std;
 
 const int64_t BLOCK_SIZE = 4096;
 const int64_t INTS_PER_BLOCK = BLOCK_SIZE / sizeof(int64_t);
-const int64_t TOTAL_MEMORY_RAM = (45 * 1024 * 1024);
+const int64_t TOTAL_MEMORY_RAM = (40 * 1024 * 1024);
 
 vector<int64_t>
 read_multiple_blocks(const string &filename, int64_t start_block, int64_t num_blocks_to_read);
@@ -40,7 +40,9 @@ int64_t k_way_merge(const vector<string> &input_files, const string &output_file
     int64_t total_io_operations = 0;
     int64_t total_seeks = 0;
     // Todo: ver si con menos límite "ram", corre en docker
-    const int64_t buffer_size_per_file = (TOTAL_MEMORY_RAM * 0.9) / (actual_arity + 1);
+    const int64_t MAX_BUFFER_SIZE = 1 * 512 * 1024;
+    const int64_t buffer_size_per_file =
+        min((int64_t)((TOTAL_MEMORY_RAM * 0.9) / (actual_arity + 1)), MAX_BUFFER_SIZE);
     int64_t blocks_per_buffer = buffer_size_per_file / BLOCK_SIZE;
     if (blocks_per_buffer == 0)
         blocks_per_buffer = 1;

@@ -2,11 +2,12 @@ CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2 -Iinclude
 
 # Regla para correr todo
-# ! Se queda sim memoria al usar -O2 con 50MB, usar prepare-all y simple-all para ese caso
+# Primero corre el experimento de aridad y luego el experimento de quicksort vs mergesort
 run-all:
 	@echo "=== Running main.cpp ==="
 	make build-main
-	./bin/main 1
+	./bin/main 1 0
+	./bin/main 0 1
 	@echo "=== Success ==="
 
 # Regla para preparar todo antes de limitar la memoria
@@ -17,24 +18,16 @@ prepare-all:
 	./bin/create_secuences 60 1
 	@echo "=== Success ==="
 
-# Regla asumiendo que se usó prepare-all para correr todo, CON EXPERIMENTO ARIDAD
-simple-all:
-	@echo  "=== Running main.cpp ==="
-	./bin/main 1
-	@echo "=== Success ==="
-
-# Regla asumiendo que se usó prepare-all para correr todo, sin EXPERIMENTO ARIDAD
-simple-all-no-experiment:
-	@echo  "=== Running main.cpp ==="
-	rm dist/m_60/secuence_1.bin
-	./bin/main 0
-	@echo "=== Success ==="
-
+# Regla para correr el programa sólo el experimento quicksort vs mergesort
 run-all-no-experiment:
+	@echo  "=== Running main.cpp ==="
+	./bin/main 0 1
+	@echo "=== Success ==="
+
+# Regla para correr el programa sólo el experimento de aridad
+run-all-experiment:
 	@echo "=== Running main.cpp ==="
-	make prepare
-	make build-main
-	./bin/main 0
+	./bin/main 1 0
 	@echo "=== Success ==="
 
 run-create_secuences:
@@ -143,6 +136,12 @@ clean-arity:
 clean-temp:
 	rm -rf temp_*
 	rm -rf results/*
+
+# Regla para generar solamente los gráficos
+graphics:
+	@echo "=== Generating plots ==="
+	python3 plot_experiment.py
+	@echo "=== Plots saved in results/graficos/ ==="
 
 # Las reglas dentro de PHONY se tratan como reglas de makefile en vez de archivos-directorios
 .PHONY: clean run prepare read-test test clean-cache regenerate-input run-arity build-main \
